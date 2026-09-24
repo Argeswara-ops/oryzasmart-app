@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/theme/app_theme.dart';
 import '../../shared/widgets/section_card.dart';
 import '../../shared/widgets/status_chip.dart';
 import '../dashboard/dashboard_controller.dart';
@@ -17,125 +18,307 @@ class VisionScreen extends ConsumerWidget {
       data: (items) {
         final latest = items.first;
         return ListView(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
           children: [
-            Text(
-              'Vision',
-              style: Theme.of(
-                context,
-              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'AI Vision Kamera',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            color: const Color(0xFF0F172A),
+                          ),
+                    ),
+                    const SizedBox(height: 2),
+                    const Text(
+                      'Deteksi Hama & Penyakit Tanaman Padi',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF64748B),
+                      ),
+                    ),
+                  ],
+                ),
+                const StatusChip(
+                  label: 'LIVE CAM',
+                  color: AppTheme.primaryGreen,
+                  isPulse: true,
+                ),
+              ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
+
+            // Camera Stream HUD Viewport Card
             SectionCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Expanded(
-                        child: Text(
-                          latest.cameraId,
-                          style: Theme.of(context).textTheme.titleLarge
-                              ?.copyWith(fontWeight: FontWeight.w800),
-                        ),
-                      ),
-                      StatusChip(
-                        label: 'ONLINE',
-                        color: Theme.of(context).colorScheme.primary,
-                        icon: Icons.circle,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  AspectRatio(
-                    aspectRatio: 16 / 9,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(8),
-                        color: const Color(0xFF1C2B22),
-                      ),
-                      child: Stack(
+                      Row(
                         children: [
-                          const Center(
-                            child: Icon(
-                              Icons.agriculture,
-                              color: Colors.white70,
-                              size: 54,
-                            ),
+                          const Icon(
+                            Icons.videocam_rounded,
+                            color: AppTheme.primaryGreen,
+                            size: 20,
                           ),
-                          Positioned(
-                            left: 82,
-                            top: 48,
-                            width: 142,
-                            height: 84,
-                            child: DecoratedBox(
-                              decoration: BoxDecoration(
-                                border: Border.all(
-                                  color: Colors.redAccent,
-                                  width: 2,
-                                ),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                            ),
-                          ),
-                          Positioned(
-                            left: 82,
-                            top: 28,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              color: Colors.redAccent,
-                              child: Text(
-                                latest.className,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
+                          const SizedBox(width: 8),
+                          Text(
+                            latest.cameraId,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF0F172A),
                             ),
                           ),
                         ],
                       ),
+                      const Text(
+                        '1080p @ 30fps',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFF64748B),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Viewport container
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: AspectRatio(
+                      aspectRatio: 16 / 9,
+                      child: Container(
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF0F172A), // Sleek Dark Slate
+                        ),
+                        child: Stack(
+                          children: [
+                            // Background HUD Grid effect
+                            Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.agriculture_rounded,
+                                    color: Colors.white.withValues(alpha: 0.15),
+                                    size: 64,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'PADDY NURSERY FIELD - CAM 01',
+                                    style: TextStyle(
+                                      color: Colors.white.withValues(alpha: 0.3),
+                                      fontSize: 10,
+                                      letterSpacing: 2,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            // Camera Corner HUD Markers
+                            Positioned(
+                              top: 12,
+                              left: 12,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.6),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: const Row(
+                                  children: [
+                                    Icon(
+                                      Icons.fiber_manual_record_rounded,
+                                      color: Color(0xFFEF4444),
+                                      size: 10,
+                                    ),
+                                    SizedBox(width: 4),
+                                    Text(
+                                      'REC',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+
+                            // AI Bounding Box Frame
+                            Positioned(
+                              left: 70,
+                              top: 40,
+                              width: 150,
+                              height: 90,
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                    color: const Color(0xFFEF4444),
+                                    width: 2,
+                                  ),
+                                  borderRadius: BorderRadius.circular(6),
+                                  color: const Color(0xFFEF4444).withValues(alpha: 0.1),
+                                ),
+                              ),
+                            ),
+
+                            // Bounding Box Label Tag
+                            Positioned(
+                              left: 70,
+                              top: 18,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFEF4444),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  '${latest.className} (${(latest.confidence * 100).round()}%)',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
+
                   const SizedBox(height: 14),
-                  Text(
-                    latest.className,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
+
+                  // Detection Metrics Details
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
                     ),
-                  ),
-                  Text(
-                    '${latest.type.toUpperCase()} - Confidence ${(latest.confidence * 100).round()}%',
-                  ),
-                  Text(
-                    'Detected ${DateFormat('dd MMM yyyy HH:mm').format(latest.detectedAt)}',
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              latest.className,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF0F172A),
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Waktu: ${DateFormat('dd MMM yyyy HH:mm').format(latest.detectedAt)}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFF64748B),
+                              ),
+                            ),
+                          ],
+                        ),
+                        StatusChip(
+                          label: 'AKURASI ${(latest.confidence * 100).round()}%',
+                          color: AppTheme.primaryGreen,
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 12),
+
+            const SizedBox(height: 16),
+
+            // History Section Header
+            const Text(
+              'Riwayat Deteksi AI Terkini',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF0F172A),
+              ),
+            ),
+            const SizedBox(height: 10),
+
             ...items.map(
               (item) => Padding(
                 padding: const EdgeInsets.only(bottom: 10),
                 child: SectionCard(
-                  child: ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: Icon(
-                      item.type == 'healthy'
-                          ? Icons.verified
-                          : Icons.warning_amber_rounded,
-                      color: item.type == 'healthy'
-                          ? Theme.of(context).colorScheme.primary
-                          : Theme.of(context).colorScheme.tertiary,
-                    ),
-                    title: Text(item.className),
-                    subtitle: Text(
-                      '${item.type.toUpperCase()} - ${item.cameraId}',
-                    ),
-                    trailing: Text('${(item.confidence * 100).round()}%'),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: (item.type == 'healthy'
+                                  ? AppTheme.primaryGreen
+                                  : const Color(0xFFD97706))
+                              .withValues(alpha: 0.12),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          item.type == 'healthy'
+                              ? Icons.verified_rounded
+                              : Icons.warning_amber_rounded,
+                          color: item.type == 'healthy'
+                              ? AppTheme.primaryGreen
+                              : const Color(0xFFD97706),
+                          size: 22,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              item.className,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF0F172A),
+                              ),
+                            ),
+                            Text(
+                              '${item.type.toUpperCase()} • ${item.cameraId}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFF64748B),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      StatusChip(
+                        label: '${(item.confidence * 100).round()}%',
+                        color: item.type == 'healthy'
+                            ? AppTheme.primaryGreen
+                            : const Color(0xFFD97706),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -143,8 +326,16 @@ class VisionScreen extends ConsumerWidget {
           ],
         );
       },
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, stackTrace) => Center(child: Text('$error')),
+      loading: () => const Center(
+        child: CircularProgressIndicator(color: AppTheme.primaryGreen),
+      ),
+      error: (error, stackTrace) => Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Text('Gagal memuat kamera vision: $error'),
+        ),
+      ),
     );
   }
 }
+
