@@ -16,25 +16,13 @@ class SettingsScreen extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Pengaturan Sistem',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        color: const Color(0xFF0F172A),
-                      ),
-                ),
-                const SizedBox(height: 2),
-                const Text(
-                  'Konfigurasi REST API, Broker MQTT & Server',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFF64748B),
-                  ),
-                ),
-              ],
+            const Text(
+              'Konfigurasi REST API & Broker MQTT',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF64748B),
+              ),
             ),
             const StatusChip(
               label: 'v1.0.0',
@@ -42,7 +30,7 @@ class SettingsScreen extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
 
         // REST API Config Card
         SectionCard(
@@ -228,6 +216,8 @@ class _SettingTile extends StatelessWidget {
                     fontSize: 11,
                     color: Color(0xFF64748B),
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 Text(
                   subtitle,
@@ -236,6 +226,8 @@ class _SettingTile extends StatelessWidget {
                     fontWeight: FontWeight.w700,
                     color: Color(0xFF0F172A),
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),

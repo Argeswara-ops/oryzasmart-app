@@ -36,70 +36,170 @@ class _AppShellState extends ConsumerState<AppShell> {
       orElse: () => 0,
     );
 
-    return Scaffold(
-      appBar: AppBar(
-        titleSpacing: 16,
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: AppTheme.primaryGreen.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(
-                Icons.eco_rounded,
-                color: AppTheme.primaryGreen,
-                size: 22,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'PADI APPS',
-                  style: TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.5,
-                    color: Color(0xFF0F172A),
-                  ),
+    PreferredSizeWidget buildAppBar() {
+      Widget titleWidget;
+      switch (_index) {
+        case 0:
+          titleWidget = Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryGreen.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
                 ),
-                Row(
+                child: const Icon(
+                  Icons.waving_hand_rounded,
+                  color: AppTheme.primaryGreen,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Container(
-                      width: 6,
-                      height: 6,
-                      decoration: const BoxDecoration(
-                        color: AppTheme.primaryGreen,
-                        shape: BoxShape.circle,
+                    Text(
+                      'Halo, Petani Modern! 👋',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF0F172A),
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(width: 4),
-                    const Text(
-                      'Smart Rice Nursery IoT',
+                    Text(
+                      'Monitoring Pembibitan Padi',
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w500,
                         color: Color(0xFF64748B),
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
-              ],
-            ),
-          ],
-        ),
+              ),
+            ],
+          );
+          break;
+        case 1:
+          titleWidget = const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Perangkat IoT',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF0F172A),
+                ),
+              ),
+              Text(
+                'Status Node Mikrokontroler & Kamera',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF64748B),
+                ),
+              ),
+            ],
+          );
+          break;
+        case 2:
+          titleWidget = const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Vision AI',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF0F172A),
+                ),
+              ),
+              Text(
+                'Deteksi Hama & Penyakit Tanaman',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF64748B),
+                ),
+              ),
+            ],
+          );
+          break;
+        case 3:
+          titleWidget = const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Riwayat Telemetri',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF0F172A),
+                ),
+              ),
+              Text(
+                'Grafik & Log Aktivitas Sensor',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF64748B),
+                ),
+              ),
+            ],
+          );
+          break;
+        case 4:
+          titleWidget = const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Pengaturan',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF0F172A),
+                ),
+              ),
+              Text(
+                'Konfigurasi Backend API & Broker',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF64748B),
+                ),
+              ),
+            ],
+          );
+          break;
+        default:
+          titleWidget = const Text('PADI APPS');
+      }
+
+      return AppBar(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        titleSpacing: 16,
+        title: titleWidget,
         actions: [
-          // Top-right Alert Bell Icon as requested
           Stack(
             clipBehavior: Clip.none,
             children: [
               IconButton(
                 style: IconButton.styleFrom(
-                  backgroundColor: Colors.white,
+                  backgroundColor: const Color(0xFFF8FAFC),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                     side: const BorderSide(color: AppTheme.cardBorder),
@@ -114,8 +214,8 @@ class _AppShellState extends ConsumerState<AppShell> {
               ),
               if (alertCount > 0)
                 Positioned(
-                  right: 4,
-                  top: 4,
+                  right: 2,
+                  top: 2,
                   child: Container(
                     padding: const EdgeInsets.all(4),
                     decoration: const BoxDecoration(
@@ -141,7 +241,11 @@ class _AppShellState extends ConsumerState<AppShell> {
           ),
           const SizedBox(width: 16),
         ],
-      ),
+      );
+    }
+
+    return Scaffold(
+      appBar: buildAppBar(),
       body: SafeArea(
         child: AnimatedSwitcher(
           duration: const Duration(milliseconds: 250),

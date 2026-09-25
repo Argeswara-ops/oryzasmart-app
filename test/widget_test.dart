@@ -7,13 +7,13 @@ void main() {
   testWidgets('shows login then opens dashboard', (WidgetTester tester) async {
     await tester.pumpWidget(const ProviderScope(child: SmartRiceNurseryApp()));
 
-    expect(find.text('Smart Rice Nursery'), findsOneWidget);
-    expect(find.text('Login'), findsOneWidget);
+    expect(find.text('PADI APPS'), findsOneWidget);
+    expect(find.text('Masuk Akun'), findsOneWidget);
 
-    await tester.tap(find.text('Login'));
+    await tester.tap(find.text('MASUK MONITORING'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Dashboard'), findsOneWidget);
-    expect(find.text('Monitoring pembibitan padi realtime'), findsOneWidget);
+    expect(find.text('Halo, Petani Modern! 👋'), findsOneWidget);
   });
 }
+

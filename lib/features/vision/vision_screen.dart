@@ -23,25 +23,13 @@ class VisionScreen extends ConsumerWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'AI Vision Kamera',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w800,
-                            color: const Color(0xFF0F172A),
-                          ),
-                    ),
-                    const SizedBox(height: 2),
-                    const Text(
-                      'Deteksi Hama & Penyakit Tanaman Padi',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF64748B),
-                      ),
-                    ),
-                  ],
+                const Text(
+                  'Feed Kamera & Analisis Realtime',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF64748B),
+                  ),
                 ),
                 const StatusChip(
                   label: 'LIVE CAM',
@@ -50,7 +38,7 @@ class VisionScreen extends ConsumerWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
 
             // Camera Stream HUD Viewport Card
             SectionCard(
@@ -60,24 +48,31 @@ class VisionScreen extends ConsumerWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.videocam_rounded,
-                            color: AppTheme.primaryGreen,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            latest.cameraId,
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w800,
-                              color: Color(0xFF0F172A),
+                      Expanded(
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.videocam_rounded,
+                              color: AppTheme.primaryGreen,
+                              size: 20,
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                latest.cameraId,
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFF0F172A),
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
+                      const SizedBox(width: 8),
                       const Text(
                         '1080p @ 30fps',
                         style: TextStyle(
@@ -219,27 +214,34 @@ class VisionScreen extends ConsumerWidget {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              latest.className,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w800,
-                                color: Color(0xFF0F172A),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                latest.className,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFF0F172A),
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'Waktu: ${DateFormat('dd MMM yyyy HH:mm').format(latest.detectedAt)}',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: Color(0xFF64748B),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Waktu: ${DateFormat('dd MMM yyyy HH:mm').format(latest.detectedAt)}',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Color(0xFF64748B),
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
+                        const SizedBox(width: 8),
                         StatusChip(
                           label: 'AKURASI ${(latest.confidence * 100).round()}%',
                           color: AppTheme.primaryGreen,
@@ -301,6 +303,8 @@ class VisionScreen extends ConsumerWidget {
                                 fontWeight: FontWeight.w700,
                                 color: Color(0xFF0F172A),
                               ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                             Text(
                               '${item.type.toUpperCase()} • ${item.cameraId}',
@@ -308,10 +312,13 @@ class VisionScreen extends ConsumerWidget {
                                 fontSize: 12,
                                 color: Color(0xFF64748B),
                               ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ],
                         ),
                       ),
+                      const SizedBox(width: 8),
                       StatusChip(
                         label: '${(item.confidence * 100).round()}%',
                         color: item.type == 'healthy'

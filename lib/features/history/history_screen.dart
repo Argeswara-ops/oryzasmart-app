@@ -22,25 +22,13 @@ class HistoryScreen extends ConsumerWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Riwayat & Analitik IoT',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w800,
-                        color: const Color(0xFF0F172A),
-                      ),
-                ),
-                const SizedBox(height: 2),
-                const Text(
-                  'Tren Sensor & Log Deteksi Hama',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFF64748B),
-                  ),
-                ),
-              ],
+            const Text(
+              'Analitik Tren Telemetri Sensor',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF64748B),
+              ),
             ),
             const StatusChip(
               label: 'TELEMETRY LOG',
@@ -48,7 +36,7 @@ class HistoryScreen extends ConsumerWidget {
             ),
           ],
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 12),
         history.when(
           data: (items) => SectionCard(
             child: Column(
@@ -57,21 +45,26 @@ class HistoryScreen extends ConsumerWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Grafik Suhu & Kelembapan',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF0F172A),
+                    const Expanded(
+                      child: Text(
+                        'Grafik Suhu & Kelembapan',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF0F172A),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
+                    const SizedBox(width: 8),
                     Row(
                       children: [
                         _ChartLegend(
                           label: 'Suhu (°C)',
                           color: AppTheme.primaryGreen,
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 8),
                         const _ChartLegend(
                           label: 'Kelembapan (%)',
                           color: Color(0xFFD97706),
@@ -200,6 +193,8 @@ class HistoryScreen extends ConsumerWidget {
                                     fontWeight: FontWeight.w700,
                                     color: Color(0xFF0F172A),
                                   ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                                 Text(
                                   '${DateFormat('dd MMM yyyy HH:mm').format(item.detectedAt)} • ${item.type}',
@@ -207,10 +202,13 @@ class HistoryScreen extends ConsumerWidget {
                                     fontSize: 11,
                                     color: Color(0xFF64748B),
                                   ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ],
                             ),
                           ),
+                          const SizedBox(width: 8),
                           StatusChip(
                             label: '${(item.confidence * 100).round()}%',
                             color: item.type == 'healthy'

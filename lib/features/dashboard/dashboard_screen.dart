@@ -47,6 +47,8 @@ class _DashboardContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final isHealthy = snapshot.recommendation.status != 'CRITICAL' &&
+        snapshot.detection.type != 'disease';
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
@@ -68,31 +70,38 @@ class _DashboardContent extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
-                          shape: BoxShape.circle,
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.2),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.thermostat_auto_rounded,
+                            color: Colors.white,
+                            size: 18,
+                          ),
                         ),
-                        child: const Icon(
-                          Icons.thermostat_auto_rounded,
-                          color: Colors.white,
-                          size: 18,
+                        const SizedBox(width: 8),
+                        const Expanded(
+                          child: Text(
+                            'Kondisi Pembibitan Padi',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      const Text(
-                        'Kondisi Pembibitan Padi',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
+                  const SizedBox(width: 8),
                   const StatusChip(
                     label: 'SYSTEM ONLINE',
                     color: Colors.white,
@@ -154,10 +163,10 @@ class _DashboardContent extends StatelessWidget {
         const SizedBox(height: 18),
 
         // Section Title: Telemetry
-        Row(
+        const Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
+            Text(
               'Telemetri Sensor Realtime',
               style: TextStyle(
                 fontSize: 16,
@@ -166,17 +175,17 @@ class _DashboardContent extends StatelessWidget {
               ),
             ),
             Text(
-              '7 Telemetri Aktif',
+              '8 Telemetri Aktif',
               style: TextStyle(
                 fontSize: 12,
-                color: const Color(0xFF64748B),
+                color: Color(0xFF64748B),
                 fontWeight: FontWeight.w500,
               ),
             ),
           ],
         ),
         const SizedBox(height: 12),
-        _SensorGrid(sensor: snapshot.sensor),
+        _SensorGrid(sensor: snapshot.sensor, isHealthy: isHealthy),
 
         const SizedBox(height: 18),
 
@@ -199,9 +208,10 @@ class _DashboardContent extends StatelessWidget {
 }
 
 class _SensorGrid extends StatelessWidget {
-  const _SensorGrid({required this.sensor});
+  const _SensorGrid({required this.sensor, required this.isHealthy});
 
   final SensorReading sensor;
+  final bool isHealthy;
 
   @override
   Widget build(BuildContext context) {
@@ -255,25 +265,32 @@ class _SensorGrid extends StatelessWidget {
         status: 'LEVEL STABIL',
         accentColor: const Color(0xFF0284C7), // Sky Blue
       ),
+      _SensorItem(
+        icon: Icons.health_and_safety_rounded,
+        label: 'Status Kesehatan',
+        value: isHealthy ? 'Sehat' : 'Tidak Sehat',
+        status: isHealthy ? 'SEHAT' : 'TIDAK SEHAT',
+        accentColor: isHealthy ? AppTheme.primaryGreen : const Color(0xFFEF4444),
+      ),
     ];
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final crossAxisCount = constraints.maxWidth > 620 ? 3 : 2;
+        final crossAxisCount = constraints.maxWidth > 620 ? 4 : 2;
         return GridView.builder(
           itemCount: items.length,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: crossAxisCount,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            childAspectRatio: 1.35,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
+            childAspectRatio: 1.25,
           ),
           itemBuilder: (context, index) {
             final item = items[index];
             return SectionCard(
-              padding: const EdgeInsets.all(14),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -282,40 +299,47 @@ class _SensorGrid extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Container(
-                        padding: const EdgeInsets.all(8),
+                        padding: const EdgeInsets.all(6),
                         decoration: BoxDecoration(
                           color: item.accentColor.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                         child: Icon(
                           item.icon,
                           color: item.accentColor,
-                          size: 20,
+                          size: 18,
                         ),
                       ),
-                      StatusChip(
-                        label: item.status,
-                        color: item.accentColor,
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: StatusChip(
+                          label: item.status,
+                          color: item.accentColor,
+                        ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   Text(
                     item.label,
                     style: const TextStyle(
-                      fontSize: 12,
+                      fontSize: 11.5,
                       color: Color(0xFF64748B),
                       fontWeight: FontWeight.w600,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  Text(
-                    item.value,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF0F172A),
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      item.value,
+                      style: const TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF0F172A),
+                      ),
                     ),
                   ),
                 ],
@@ -339,8 +363,8 @@ class _LatestDetection extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            width: 72,
-            height: 72,
+            width: 68,
+            height: 68,
             decoration: BoxDecoration(
               color: const Color(0xFFFEF2F2),
               borderRadius: BorderRadius.circular(14),
@@ -355,7 +379,7 @@ class _LatestDetection extends StatelessWidget {
                 Icon(
                   Icons.bug_report_rounded,
                   color: Color(0xFFDC2626),
-                  size: 30,
+                  size: 28,
                 ),
                 SizedBox(height: 2),
                 Text(
@@ -369,7 +393,7 @@ class _LatestDetection extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -377,14 +401,19 @@ class _LatestDetection extends StatelessWidget {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'Deteksi Hama Terbaru',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Color(0xFF64748B),
+                    const Expanded(
+                      child: Text(
+                        'Deteksi Hama Terbaru',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF64748B),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
+                    const SizedBox(width: 6),
                     StatusChip(
                       label: '${(detection.confidence * 100).round()}% MATCH',
                       color: AppTheme.primaryGreen,
@@ -399,6 +428,8 @@ class _LatestDetection extends StatelessWidget {
                     fontWeight: FontWeight.w800,
                     color: Color(0xFF0F172A),
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 2),
                 Text(
@@ -407,6 +438,8 @@ class _LatestDetection extends StatelessWidget {
                     fontSize: 12,
                     color: Color(0xFF64748B),
                   ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 Text(
                   'Terdeteksi ${DateFormat.Hm().format(detection.detectedAt)} WIB',
@@ -444,50 +477,57 @@ class _FanControl extends ConsumerWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: isFanOn
-                          ? AppTheme.primaryGreen.withValues(alpha: 0.12)
-                          : const Color(0xFFF1F5F9),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(
-                      Icons.air_rounded,
-                      color: isFanOn
-                          ? AppTheme.primaryGreen
-                          : const Color(0xFF64748B),
-                      size: 22,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Aktuator Kipas Pentilasi',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF0F172A),
-                        ),
+              Expanded(
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: isFanOn
+                            ? AppTheme.primaryGreen.withValues(alpha: 0.12)
+                            : const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                      Text(
-                        'Status: ${fanState.status}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: isFanOn
-                              ? AppTheme.primaryGreen
-                              : const Color(0xFF64748B),
-                          fontWeight: FontWeight.w600,
-                        ),
+                      child: Icon(
+                        Icons.air_rounded,
+                        color: isFanOn
+                            ? AppTheme.primaryGreen
+                            : const Color(0xFF64748B),
+                        size: 22,
                       ),
-                    ],
-                  ),
-                ],
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Aktuator Kipas Pentilasi',
+                            style: TextStyle(
+                              fontSize: 14.5,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF0F172A),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            'Status: ${fanState.status}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isFanOn
+                                  ? AppTheme.primaryGreen
+                                  : const Color(0xFF64748B),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               StatusChip(
                 label: fanState.mode,
                 color: fanState.mode == 'AUTO'
@@ -497,23 +537,26 @@ class _FanControl extends ConsumerWidget {
             ],
           ),
           const SizedBox(height: 16),
-          SegmentedButton<String>(
-            segments: const [
-              ButtonSegment(
-                value: 'AUTO',
-                icon: Icon(Icons.auto_mode_rounded, size: 18),
-                label: Text('Otomatis'),
-              ),
-              ButtonSegment(
-                value: 'MANUAL',
-                icon: Icon(Icons.touch_app_rounded, size: 18),
-                label: Text('Manual'),
-              ),
-            ],
-            selected: {fanState.mode},
-            onSelectionChanged: (value) {
-              ref.read(fanControllerProvider.notifier).setMode(value.first);
-            },
+          SizedBox(
+            width: double.infinity,
+            child: SegmentedButton<String>(
+              segments: const [
+                ButtonSegment(
+                  value: 'AUTO',
+                  icon: Icon(Icons.auto_mode_rounded, size: 18),
+                  label: Text('Otomatis'),
+                ),
+                ButtonSegment(
+                  value: 'MANUAL',
+                  icon: Icon(Icons.touch_app_rounded, size: 18),
+                  label: Text('Manual'),
+                ),
+              ],
+              selected: {fanState.mode},
+              onSelectionChanged: (value) {
+                ref.read(fanControllerProvider.notifier).setMode(value.first);
+              },
+            ),
           ),
           if (fanState.mode == 'MANUAL') ...[
             const SizedBox(height: 12),
@@ -568,4 +611,5 @@ class _SensorItem {
   final String status;
   final Color accentColor;
 }
+
 

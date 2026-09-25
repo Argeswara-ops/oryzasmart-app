@@ -17,7 +17,8 @@ class StatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      constraints: const BoxConstraints(maxWidth: 140),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(99),
@@ -31,32 +32,36 @@ class StatusChip extends StatelessWidget {
         children: [
           if (isPulse) ...[
             Container(
-              width: 8,
-              height: 8,
+              width: 7,
+              height: 7,
               decoration: BoxDecoration(
                 color: color,
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
                     color: color.withValues(alpha: 0.6),
-                    blurRadius: 6,
+                    blurRadius: 5,
                     spreadRadius: 1,
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 6),
-          ] else if (icon != null) ...[
-            Icon(icon, size: 13, color: color),
             const SizedBox(width: 5),
+          ] else if (icon != null) ...[
+            Icon(icon, size: 12, color: color),
+            const SizedBox(width: 4),
           ],
-          Text(
-            label,
-            style: TextStyle(
-              color: color,
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.3,
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: color,
+                fontSize: 10.5,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.2,
+              ),
             ),
           ),
         ],
@@ -64,4 +69,5 @@ class StatusChip extends StatelessWidget {
     );
   }
 }
+
 
