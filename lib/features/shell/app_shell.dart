@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../shared/repositories/nursery_repository.dart';
 import '../alerts/alerts_screen.dart';
 import '../dashboard/dashboard_controller.dart';
 import '../dashboard/dashboard_screen.dart';
@@ -11,9 +12,10 @@ import '../settings/settings_screen.dart';
 import '../vision/vision_screen.dart';
 
 class AppShell extends ConsumerStatefulWidget {
-  const AppShell({super.key, required this.onLogout});
+  const AppShell({super.key, required this.user, required this.onLogout});
 
-  final VoidCallback onLogout;
+  final AuthUser user;
+  final Future<void> Function() onLogout;
 
   @override
   ConsumerState<AppShell> createState() => _AppShellState();
@@ -111,7 +113,7 @@ class _AppShellState extends ConsumerState<AppShell> {
       const DevicesScreen(),
       const VisionScreen(),
       const HistoryScreen(),
-      SettingsScreen(onLogout: widget.onLogout),
+      SettingsScreen(user: widget.user, onLogout: widget.onLogout),
     ];
 
     return Scaffold(

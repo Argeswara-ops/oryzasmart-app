@@ -23,7 +23,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final history = ref.watch(sensorHistoryProvider);
+    final history = ref.watch(sensorHistoryProvider(_period));
     final detections = ref.watch(detectionsProvider);
 
     return ListView(

@@ -7,9 +7,12 @@ final dashboardProvider = FutureProvider<DashboardSnapshot>((ref) async {
   return ref.watch(nurseryRepositoryProvider).getDashboard();
 });
 
-final sensorHistoryProvider = FutureProvider<List<SensorReading>>((ref) async {
-  return ref.watch(nurseryRepositoryProvider).getSensorHistory();
-});
+final sensorHistoryProvider =
+    FutureProvider.family<List<SensorReading>, String>((ref, range) async {
+      return ref
+          .watch(nurseryRepositoryProvider)
+          .getSensorHistory(range: _apiRange(range));
+    });
 
 final detectionsProvider = FutureProvider<List<Detection>>((ref) async {
   return ref.watch(nurseryRepositoryProvider).getDetections();
@@ -51,4 +54,12 @@ class FanController extends AsyncNotifier<FanState> {
     );
     state = result.hasError && previous != null ? AsyncData(previous) : result;
   }
+}
+
+String _apiRange(String value) {
+  return switch (value) {
+    '7d' => '7days',
+    '30d' => '30days',
+    _ => value,
+  };
 }

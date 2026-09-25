@@ -2,20 +2,20 @@ import 'package:flutter/material.dart';
 
 import '../../core/config/app_config.dart';
 import '../../core/theme/app_theme.dart';
+import '../../shared/repositories/nursery_repository.dart';
 import '../../shared/widgets/section_card.dart';
 
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key, required this.onLogout});
+  const SettingsScreen({super.key, required this.user, required this.onLogout});
 
-  final VoidCallback onLogout;
+  final AuthUser user;
+  final Future<void> Function() onLogout;
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  final String _name = 'Petani Padi';
-  final String _email = 'petani@oryza.smart';
   bool _criticalNotif = true;
   bool _dailySummary = true;
   double _temperatureLimit = 32;
@@ -26,7 +26,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       children: [
-        _ProfileCard(name: _name, email: _email, onLogout: widget.onLogout),
+        _ProfileCard(
+          name: widget.user.name,
+          email: widget.user.email,
+          role: widget.user.role,
+          onLogout: widget.onLogout,
+        ),
         const SizedBox(height: 12),
         SectionCard(
           child: Column(
@@ -125,12 +130,14 @@ class _ProfileCard extends StatelessWidget {
   const _ProfileCard({
     required this.name,
     required this.email,
+    required this.role,
     required this.onLogout,
   });
 
   final String name;
   final String email;
-  final VoidCallback onLogout;
+  final String role;
+  final Future<void> Function() onLogout;
 
   @override
   Widget build(BuildContext context) {
@@ -169,7 +176,7 @@ class _ProfileCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
-                  email,
+                  '$email - ${role.toUpperCase()}',
                   style: const TextStyle(
                     fontSize: 12,
                     color: AppTheme.textMuted,

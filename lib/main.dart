@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'core/api/api_providers.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/login_screen.dart';
 import 'features/shell/app_shell.dart';
+import 'shared/repositories/nursery_repository.dart';
 
 void main() {
   runApp(const ProviderScope(child: SmartRiceNurseryApp()));
@@ -23,21 +25,35 @@ class SmartRiceNurseryApp extends StatelessWidget {
   }
 }
 
-class AppEntry extends StatefulWidget {
+class AppEntry extends ConsumerStatefulWidget {
   const AppEntry({super.key});
 
   @override
-  State<AppEntry> createState() => _AppEntryState();
+  ConsumerState<AppEntry> createState() => _AppEntryState();
 }
 
-class _AppEntryState extends State<AppEntry> {
-  bool _isLoggedIn = false;
+class _AppEntryState extends ConsumerState<AppEntry> {
+  AuthUser? _user;
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoggedIn) {
-      return AppShell(onLogout: () => setState(() => _isLoggedIn = false));
+    final user = _user;
+    if (user != null) {
+      return AppShell(
+        user: user,
+        onLogout: () async {
+          await ref.read(nurseryRepositoryProvider).logout();
+          if (mounted) setState(() => _user = null);
+        },
+      );
     }
-    return LoginScreen(onLogin: () => setState(() => _isLoggedIn = true));
+    return LoginScreen(
+      onLogin: (email, password) async {
+        final user = await ref
+            .read(nurseryRepositoryProvider)
+            .login(email: email, password: password);
+        if (mounted) setState(() => _user = user);
+      },
+    );
   }
 }

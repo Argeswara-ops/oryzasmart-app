@@ -7,6 +7,8 @@ class DashboardSnapshot {
     required this.fan,
     required this.alerts,
     required this.recommendation,
+    required this.systemStatus,
+    required this.unreadAlerts,
   });
 
   final DeviceStatus device;
@@ -16,6 +18,8 @@ class DashboardSnapshot {
   final FanState fan;
   final List<SystemAlert> alerts;
   final Recommendation recommendation;
+  final String systemStatus;
+  final int unreadAlerts;
 }
 
 class SensorReading {
@@ -43,7 +47,7 @@ class SensorReading {
 
   factory SensorReading.fromJson(Map<String, dynamic> json) {
     return SensorReading(
-      deviceId: '${json['device_id'] ?? 'ESP32-01'}',
+      deviceId: '${json['device_id'] ?? json['device_code'] ?? 'ESP32-01'}',
       temperature: _toDouble(json['temperature']),
       humidity: _toDouble(json['humidity']),
       nitrogen: _toDouble(json['nitrogen']),
@@ -52,7 +56,8 @@ class SensorReading {
       light: _toDouble(json['light']),
       ultrasonic: _toDouble(json['ultrasonic']),
       createdAt:
-          DateTime.tryParse('${json['created_at'] ?? ''}') ?? DateTime.now(),
+          _toDateTime(json['created_at'] ?? json['recorded_at']) ??
+          DateTime.now(),
     );
   }
 }
@@ -76,13 +81,15 @@ class Detection {
 
   factory Detection.fromJson(Map<String, dynamic> json) {
     return Detection(
-      cameraId: '${json['camera_id'] ?? 'CAM-01'}',
-      type: '${json['type'] ?? 'unknown'}',
+      cameraId:
+          '${json['camera_id'] ?? json['camera_code'] ?? json['camera'] ?? 'CAM-01'}',
+      type: _normalizeType(json['detection_type'] ?? json['type']),
       className: '${json['class_name'] ?? json['class'] ?? 'unknown'}',
       confidence: _toDouble(json['confidence']),
-      image: '${json['image'] ?? ''}',
+      image: '${json['image_path'] ?? json['image'] ?? ''}',
       detectedAt:
-          DateTime.tryParse('${json['detected_at'] ?? ''}') ?? DateTime.now(),
+          _toDateTime(json['detected_at'] ?? json['created_at']) ??
+          DateTime.now(),
     );
   }
 }
@@ -99,6 +106,23 @@ class DeviceStatus {
   final String name;
   final String status;
   final DateTime lastSeen;
+
+  factory DeviceStatus.fromJson(
+    Map<String, dynamic> json, {
+    required String fallbackCode,
+    required String fallbackName,
+    String? fallbackStatus,
+  }) {
+    return DeviceStatus(
+      code:
+          '${json['code'] ?? json['device_code'] ?? json['camera_id'] ?? fallbackCode}',
+      name: '${json['name'] ?? fallbackName}',
+      status: _normalizeStatus(json['status'] ?? fallbackStatus ?? 'OFFLINE'),
+      lastSeen:
+          _toDateTime(json['last_seen'] ?? json['updated_at']) ??
+          DateTime.now(),
+    );
+  }
 }
 
 class FanState {
@@ -110,20 +134,44 @@ class FanState {
   FanState copyWith({String? status, String? mode}) {
     return FanState(status: status ?? this.status, mode: mode ?? this.mode);
   }
+
+  factory FanState.fromJson(Map<String, dynamic> json) {
+    return FanState(
+      status: _normalizeStatus(json['status'] ?? 'OFF'),
+      mode: _normalizeStatus(json['mode'] ?? 'MANUAL'),
+    );
+  }
 }
 
 class SystemAlert {
   const SystemAlert({
+    this.id,
     required this.level,
     required this.title,
     required this.message,
     required this.createdAt,
+    this.isRead = false,
   });
 
+  final int? id;
   final String level;
   final String title;
   final String message;
   final DateTime createdAt;
+  final bool isRead;
+
+  factory SystemAlert.fromJson(Map<String, dynamic> json) {
+    return SystemAlert(
+      id: _toInt(json['id']),
+      level: _normalizeStatus(json['level'] ?? json['severity'] ?? 'WARNING'),
+      title: '${json['title'] ?? 'Alert'}',
+      message: '${json['message'] ?? ''}',
+      createdAt:
+          _toDateTime(json['created_at'] ?? json['detected_at']) ??
+          DateTime.now(),
+      isRead: json['is_read'] == true || json['read_at'] != null,
+    );
+  }
 }
 
 class Recommendation {
@@ -136,9 +184,33 @@ class Recommendation {
   final String status;
   final String cause;
   final String message;
+
+  factory Recommendation.fromJson(Map<String, dynamic> json) {
+    return Recommendation(
+      status: _normalizeStatus(json['status'] ?? 'NORMAL'),
+      cause: '${json['cause'] ?? json['title'] ?? 'Kondisi nursery normal.'}',
+      message:
+          '${json['message'] ?? json['recommendation'] ?? 'Lanjutkan pemantauan berkala.'}',
+    );
+  }
 }
 
 double _toDouble(Object? value) {
   if (value is num) return value.toDouble();
   return double.tryParse('$value') ?? 0;
 }
+
+int _toInt(Object? value) {
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  return int.tryParse('$value') ?? 0;
+}
+
+DateTime? _toDateTime(Object? value) {
+  if (value == null) return null;
+  return DateTime.tryParse('$value');
+}
+
+String _normalizeType(Object? value) => '${value ?? 'UNKNOWN'}'.toLowerCase();
+
+String _normalizeStatus(Object? value) => '${value ?? ''}'.toUpperCase();

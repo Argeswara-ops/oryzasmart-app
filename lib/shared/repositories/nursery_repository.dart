@@ -9,89 +9,354 @@ class NurseryRepository {
   final ApiClient _client;
   FanState _fan = const FanState(status: 'ON', mode: 'AUTO');
 
+  Future<AuthUser> login({
+    required String email,
+    required String password,
+  }) async {
+    final response = await _client.dio.post<Map<String, dynamic>>(
+      '/login',
+      data: {'email': email, 'password': password},
+    );
+    final data = _client.dataEnvelope(response);
+    final token = '${data['token'] ?? ''}';
+    if (token.isEmpty) {
+      throw StateError('Token login tidak ditemukan dari backend.');
+    }
+
+    _client.setToken(token);
+    final user = data['user'] is Map<String, dynamic>
+        ? AuthUser.fromJson(data['user'] as Map<String, dynamic>)
+        : AuthUser.fallback(email);
+    return user;
+  }
+
+  Future<void> logout() async {
+    try {
+      await _client.dio.post<Map<String, dynamic>>('/logout');
+    } on DioException {
+      // Sesi lokal tetap perlu dibersihkan saat backend tidak terjangkau.
+    } finally {
+      _client.clearToken();
+    }
+  }
+
   Future<DashboardSnapshot> getDashboard() async {
     try {
       final response = await _client.dio.get<Map<String, dynamic>>(
         '/dashboard',
       );
-      final data = response.data;
-      if (data == null) return _mockDashboard();
+      final data = _client.dataEnvelope(response);
+      if (data.isEmpty) return _mockDashboard();
 
+      final fallback = _mockDashboard();
       return DashboardSnapshot(
-        device: DeviceStatus(
-          code: '${data['device']?['device_code'] ?? 'ESP32-01'}',
-          name: '${data['device']?['name'] ?? 'Nursery Controller'}',
-          status: '${data['device']?['status'] ?? 'online'}',
-          lastSeen: DateTime.now(),
+        device: DeviceStatus.fromJson(
+          _mapOf(data['device']),
+          fallbackCode: 'ESP32-01',
+          fallbackName: 'Nursery Controller',
+          fallbackStatus: data['device_status']?.toString(),
         ),
-        camera: DeviceStatus(
-          code: '${data['camera']?['code'] ?? 'CAM-01'}',
-          name: '${data['camera']?['name'] ?? 'Camera 01'}',
-          status: '${data['camera']?['status'] ?? 'online'}',
-          lastSeen: DateTime.now(),
+        camera: DeviceStatus.fromJson(
+          _mapOf(data['camera']),
+          fallbackCode: 'CAM-01',
+          fallbackName: 'Camera 01',
+          fallbackStatus: 'ONLINE',
         ),
         sensor: SensorReading.fromJson(
-          data['sensor'] ?? data['latest_sensor'] ?? {},
+          _mapOf(data['sensors'] ?? data['sensor'] ?? data['latest_sensor']),
         ),
         detection: Detection.fromJson(
-          data['detection'] ?? data['latest_detection'] ?? {},
+          _mapOf(data['latest_detection'] ?? data['detection']),
         ),
-        fan: _fan,
-        alerts: _mockDashboard().alerts,
-        recommendation: _mockDashboard().recommendation,
+        fan: FanState.fromJson(_mapOf(data['fan'])),
+        alerts: _alertsFrom(data['alerts'], fallback.alerts),
+        recommendation: data['recommendation'] is Map<String, dynamic>
+            ? Recommendation.fromJson(
+                data['recommendation'] as Map<String, dynamic>,
+              )
+            : _recommendationFromStatus(
+                '${data['system_status'] ?? 'NORMAL'}',
+                fallback.recommendation,
+              ),
+        systemStatus: '${data['system_status'] ?? 'NORMAL'}',
+        unreadAlerts: _toInt(data['unread_alerts']),
       );
     } on DioException {
       return _mockDashboard();
     }
   }
 
-  Future<List<SensorReading>> getSensorHistory() async {
+  Future<List<SensorReading>> getSensorHistory({String range = '7days'}) async {
     try {
-      final response = await _client.dio.get<List<dynamic>>('/sensors/history');
-      return response.data
-              ?.whereType<Map<String, dynamic>>()
-              .map(SensorReading.fromJson)
-              .toList() ??
-          _mockSensorHistory();
+      final response = await _client.dio.get<dynamic>(
+        '/sensors/history',
+        queryParameters: {'range': range},
+      );
+      final body = response.data;
+      final items = body is Map<String, dynamic>
+          ? _seriesFromHistory(body)
+          : _client.listEnvelope(response);
+      return items
+          .whereType<Map<String, dynamic>>()
+          .map(SensorReading.fromJson)
+          .toList();
     } on DioException {
       return _mockSensorHistory();
     }
   }
 
-  Future<List<Detection>> getDetections() async {
+  Future<SensorReading> getLatestSensor() async {
     try {
-      final response = await _client.dio.get<List<dynamic>>('/detections');
-      return response.data
-              ?.whereType<Map<String, dynamic>>()
-              .map(Detection.fromJson)
-              .toList() ??
-          _mockDetections();
+      final response = await _client.dio.get<Map<String, dynamic>>(
+        '/sensors/latest',
+      );
+      return SensorReading.fromJson(_client.dataEnvelope(response));
+    } on DioException {
+      return _mockDashboard().sensor;
+    }
+  }
+
+  Future<List<DeviceStatus>> getDevices() async {
+    try {
+      final response = await _client.dio.get<dynamic>('/devices');
+      return _client
+          .listEnvelope(response)
+          .whereType<Map<String, dynamic>>()
+          .map(
+            (item) => DeviceStatus.fromJson(
+              item,
+              fallbackCode: 'ESP32-01',
+              fallbackName: 'Nursery Controller',
+            ),
+          )
+          .toList();
+    } on DioException {
+      return [_mockDashboard().device];
+    }
+  }
+
+  Future<List<DeviceStatus>> getCameras() async {
+    try {
+      final response = await _client.dio.get<dynamic>('/cameras');
+      return _client
+          .listEnvelope(response)
+          .whereType<Map<String, dynamic>>()
+          .map(
+            (item) => DeviceStatus.fromJson(
+              item,
+              fallbackCode: 'CAM-01',
+              fallbackName: 'Camera 01',
+            ),
+          )
+          .toList();
+    } on DioException {
+      return [_mockDashboard().camera];
+    }
+  }
+
+  Future<List<Detection>> getDetections({String? type, String? camera}) async {
+    try {
+      final queryParameters = <String, dynamic>{
+        if (type != null && type != 'all') 'type': type,
+      };
+      if (camera != null) queryParameters['camera'] = camera;
+
+      final response = await _client.dio.get<dynamic>(
+        '/detections',
+        queryParameters: queryParameters,
+      );
+      return _client
+          .listEnvelope(response)
+          .whereType<Map<String, dynamic>>()
+          .map(Detection.fromJson)
+          .toList();
     } on DioException {
       return _mockDetections();
     }
   }
 
-  Future<FanState> setFanStatus(String status) async {
+  Future<Detection> getLatestDetection() async {
     try {
-      await _client.dio.post(
-        '/actuators/fan/control',
-        data: {'command': status},
+      final response = await _client.dio.get<Map<String, dynamic>>(
+        '/detections/latest',
       );
+      return Detection.fromJson(_client.dataEnvelope(response));
     } on DioException {
-      // Local fallback keeps the MVP usable before Laravel and MQTT are online.
+      return _mockDashboard().detection;
     }
-    _fan = _fan.copyWith(status: status);
-    return _fan;
+  }
+
+  Future<List<SystemAlert>> getAlerts() async {
+    try {
+      final response = await _client.dio.get<dynamic>('/alerts');
+      return _client
+          .listEnvelope(response)
+          .whereType<Map<String, dynamic>>()
+          .map(SystemAlert.fromJson)
+          .toList();
+    } on DioException {
+      return _mockDashboard().alerts;
+    }
+  }
+
+  Future<void> markAlertRead(int id) async {
+    try {
+      await _client.dio.post<Map<String, dynamic>>('/alerts/$id/read');
+    } on DioException {
+      // Status baca akan ikut sinkron saat refresh backend berikutnya.
+    }
+  }
+
+  Future<List<Recommendation>> getRecommendations() async {
+    try {
+      final response = await _client.dio.get<dynamic>('/recommendations');
+      return _client
+          .listEnvelope(response)
+          .whereType<Map<String, dynamic>>()
+          .map(Recommendation.fromJson)
+          .toList();
+    } on DioException {
+      return [_mockDashboard().recommendation];
+    }
+  }
+
+  Future<Recommendation> getLatestRecommendation() async {
+    try {
+      final response = await _client.dio.get<Map<String, dynamic>>(
+        '/recommendations/latest',
+      );
+      return Recommendation.fromJson(_client.dataEnvelope(response));
+    } on DioException {
+      return _mockDashboard().recommendation;
+    }
+  }
+
+  Future<FanState> getFanStatus() async {
+    try {
+      final response = await _client.dio.get<Map<String, dynamic>>(
+        '/actuators/fan/status',
+      );
+      _fan = FanState.fromJson(_client.dataEnvelope(response));
+      return _fan;
+    } on DioException {
+      return _fan;
+    }
+  }
+
+  Future<FanState> setFanStatus(String status) async {
+    return _controlFan(command: status, mode: _fan.mode);
   }
 
   Future<FanState> setFanMode(String mode) async {
+    return _controlFan(command: _fan.status, mode: mode);
+  }
+
+  Future<void> updateThreshold({
+    required String sensorType,
+    required double minValue,
+    required double maxValue,
+  }) async {
+    await _client.dio.put<Map<String, dynamic>>(
+      '/thresholds/$sensorType',
+      data: {'min_value': minValue, 'max_value': maxValue},
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> getThresholds() async {
     try {
-      await _client.dio.post('/actuators/fan/mode', data: {'mode': mode});
+      final response = await _client.dio.get<Map<String, dynamic>>(
+        '/thresholds',
+      );
+      final data = _client.dataEnvelope(response);
+      if (data['thresholds'] is List) {
+        return (data['thresholds'] as List)
+            .whereType<Map<String, dynamic>>()
+            .toList();
+      }
+      return data.entries
+          .where((entry) => entry.value is Map<String, dynamic>)
+          .map(
+            (entry) => {
+              'sensor_type': entry.key,
+              ...(entry.value as Map<String, dynamic>),
+            },
+          )
+          .toList();
     } on DioException {
-      // Local fallback keeps the MVP usable before Laravel and MQTT are online.
+      return const [];
     }
-    _fan = _fan.copyWith(mode: mode);
+  }
+
+  Future<FanState> _controlFan({
+    required String command,
+    required String mode,
+  }) async {
+    try {
+      final response = await _client.dio.post<Map<String, dynamic>>(
+        '/actuators/fan/control',
+        data: {'device_id': 'ESP32-01', 'command': command, 'mode': mode},
+      );
+      final data = _client.dataEnvelope(response);
+      _fan = data.isEmpty
+          ? _fan.copyWith(status: command, mode: mode)
+          : FanState.fromJson(data);
+    } on DioException {
+      _fan = _fan.copyWith(status: command, mode: mode);
+    }
     return _fan;
+  }
+
+  List<dynamic> _seriesFromHistory(Map<String, dynamic> body) {
+    final data = body['data'];
+    if (data is Map<String, dynamic>) {
+      final series = data['series'];
+      if (series is List) return series;
+    }
+    return _client.listEnvelope(
+      Response<dynamic>(
+        data: body,
+        requestOptions: RequestOptions(path: ''),
+      ),
+    );
+  }
+
+  List<SystemAlert> _alertsFrom(Object? value, List<SystemAlert> fallback) {
+    if (value is List) {
+      return value
+          .whereType<Map<String, dynamic>>()
+          .map(SystemAlert.fromJson)
+          .toList();
+    }
+    return fallback;
+  }
+
+  Recommendation _recommendationFromStatus(
+    String status,
+    Recommendation fallback,
+  ) {
+    final normalized = status.toUpperCase();
+    if (normalized == 'NORMAL') {
+      return const Recommendation(
+        status: 'NORMAL',
+        cause: 'Kondisi nursery normal.',
+        message: 'Lanjutkan pemantauan berkala.',
+      );
+    }
+    return Recommendation(
+      status: normalized,
+      cause: fallback.cause,
+      message: fallback.message,
+    );
+  }
+
+  Map<String, dynamic> _mapOf(Object? value) {
+    return value is Map<String, dynamic> ? value : <String, dynamic>{};
+  }
+
+  int _toInt(Object? value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse('$value') ?? 0;
   }
 
   DashboardSnapshot _mockDashboard() {
@@ -100,13 +365,13 @@ class NurseryRepository {
       device: DeviceStatus(
         code: 'ESP32-01',
         name: 'Nursery Controller',
-        status: 'online',
+        status: 'ONLINE',
         lastSeen: now.subtract(const Duration(seconds: 18)),
       ),
       camera: DeviceStatus(
         code: 'CAM-01',
         name: 'Camera 01',
-        status: 'online',
+        status: 'ONLINE',
         lastSeen: now.subtract(const Duration(seconds: 31)),
       ),
       sensor: SensorReading(
@@ -149,6 +414,8 @@ class NurseryRepository {
         message:
             'Periksa tanaman pada area CAM-01 dan jaga sirkulasi udara pembibitan.',
       ),
+      systemStatus: 'WARNING',
+      unreadAlerts: 2,
     );
   }
 
@@ -198,5 +465,39 @@ class NurseryRepository {
         detectedAt: now.subtract(const Duration(hours: 4)),
       ),
     ];
+  }
+}
+
+class AuthUser {
+  const AuthUser({
+    required this.id,
+    required this.name,
+    required this.email,
+    required this.role,
+  });
+
+  final int id;
+  final String name;
+  final String email;
+  final String role;
+
+  factory AuthUser.fromJson(Map<String, dynamic> json) {
+    return AuthUser(
+      id: json['id'] is int
+          ? json['id'] as int
+          : int.tryParse('${json['id']}') ?? 0,
+      name: '${json['name'] ?? 'Operator Pembibitan'}',
+      email: '${json['email'] ?? 'operator@padibackend.test'}',
+      role: '${json['role'] ?? 'operator'}',
+    );
+  }
+
+  factory AuthUser.fallback(String email) {
+    return AuthUser(
+      id: 0,
+      name: 'Operator Pembibitan',
+      email: email,
+      role: 'operator',
+    );
   }
 }

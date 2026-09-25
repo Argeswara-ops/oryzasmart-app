@@ -4,14 +4,54 @@ import '../config/app_config.dart';
 
 class ApiClient {
   ApiClient()
-    : dio = Dio(
+    : _dio = Dio(
         BaseOptions(
           baseUrl: AppConfig.apiBaseUrl,
           connectTimeout: const Duration(seconds: 3),
           receiveTimeout: const Duration(seconds: 3),
-          headers: {'Accept': 'application/json'},
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+          },
         ),
       );
 
-  final Dio dio;
+  final Dio _dio;
+  String? _token;
+
+  Dio get dio => _dio;
+
+  String? get token => _token;
+
+  void setToken(String token) {
+    _token = token;
+    _dio.options.headers['Authorization'] = 'Bearer $token';
+  }
+
+  void clearToken() {
+    _token = null;
+    _dio.options.headers.remove('Authorization');
+  }
+
+  Map<String, dynamic> dataEnvelope(Response<Map<String, dynamic>> response) {
+    final body = response.data ?? <String, dynamic>{};
+    final payload = body['data'];
+    return payload is Map<String, dynamic> ? payload : body;
+  }
+
+  List<dynamic> listEnvelope(Response<dynamic> response) {
+    final body = response.data;
+    if (body is List) return body;
+    if (body is Map<String, dynamic>) {
+      final data = body['data'];
+      if (data is List) return data;
+      if (data is Map<String, dynamic>) {
+        for (final key in ['items', 'data', 'series', 'alerts']) {
+          final value = data[key];
+          if (value is List) return value;
+        }
+      }
+    }
+    return const [];
+  }
 }
