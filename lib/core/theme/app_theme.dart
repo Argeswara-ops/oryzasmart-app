@@ -3,28 +3,35 @@ import 'package:flutter/material.dart';
 class AppTheme {
   const AppTheme._();
 
-  // Emerald Green palette tailored for Agricultural IoT
-  static const primaryGreen = Color(0xFF059669); // Emerald 600
-  static const primaryGreenDark = Color(0xFF047857); // Emerald 700
-  static const primaryGreenLight = Color(0xFF10B981); // Emerald 500
-  static const mintAccent = Color(0xFF34D399); // Emerald 400
-  static const mintLight = Color(0xFFD1FAE5); // Emerald 100
-  static const bgMint = Color(0xFFF2FBF6); // Soft mint background
-  static const cardBorder = Color(0xFFE2F1E8); // Subtle green-gray border
+  // Field dashboard palette for agricultural IoT.
+  static const primaryGreen = Color(0xFF059669);
+  static const primaryGreenDark = Color(0xFF047857);
+  static const primaryGreenLight = Color(0xFF10B981);
+  static const mintAccent = Color(0xFF34D399);
+  static const mintLight = Color(0xFFD1FAE5);
+  static const bgMint = Color(0xFFF4FAF7);
+  static const cardBorder = Color(0xFFDDEAE3);
+  static const warning = Color(0xFFD97706);
+  static const critical = Color(0xFFDC2626);
+  static const infoBlue = Color(0xFF0284C7);
+  static const teal = Color(0xFF0D9488);
+  static const textStrong = Color(0xFF0F172A);
+  static const textMuted = Color(0xFF64748B);
 
   static ThemeData get light {
     return ThemeData(
       useMaterial3: true,
+      fontFamily: 'Plus Jakarta Sans',
       colorScheme: ColorScheme.fromSeed(
         seedColor: primaryGreen,
         primary: primaryGreen,
         primaryContainer: mintLight,
         onPrimaryContainer: primaryGreenDark,
-        secondary: const Color(0xFF0D9488), // Teal accent
-        tertiary: const Color(0xFFD97706), // Amber warning
-        error: const Color(0xFFDC2626), // Red alert
+        secondary: teal,
+        tertiary: warning,
+        error: critical,
         surface: Colors.white,
-        onSurface: const Color(0xFF0F172A),
+        onSurface: textStrong,
       ),
       scaffoldBackgroundColor: bgMint,
       cardTheme: CardThemeData(
@@ -32,7 +39,7 @@ class AppTheme {
         margin: EdgeInsets.zero,
         color: Colors.white,
         shape: RoundedRectangleBorder(
-          borderRadius: const BorderRadius.all(Radius.circular(16)),
+          borderRadius: const BorderRadius.all(Radius.circular(12)),
           side: const BorderSide(color: cardBorder, width: 1),
         ),
       ),
@@ -41,9 +48,9 @@ class AppTheme {
         elevation: 0,
         scrolledUnderElevation: 0,
         backgroundColor: bgMint,
-        foregroundColor: Color(0xFF0F172A),
+        foregroundColor: textStrong,
         titleTextStyle: TextStyle(
-          color: Color(0xFF0F172A),
+          color: textStrong,
           fontSize: 20,
           fontWeight: FontWeight.w800,
         ),
@@ -58,7 +65,7 @@ class AppTheme {
           if (states.contains(WidgetState.selected)) {
             return const IconThemeData(color: primaryGreen, size: 21);
           }
-          return const IconThemeData(color: Color(0xFF64748B), size: 20);
+          return const IconThemeData(color: textMuted, size: 20);
         }),
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
@@ -91,7 +98,7 @@ class AppTheme {
           }),
           side: WidgetStateProperty.all(const BorderSide(color: cardBorder)),
           shape: WidgetStateProperty.all(
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
           ),
         ),
       ),
@@ -102,7 +109,7 @@ class AppTheme {
           elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(10),
           ),
           textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
         ),

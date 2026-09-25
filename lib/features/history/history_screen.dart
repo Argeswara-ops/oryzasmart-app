@@ -4,212 +4,408 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../shared/models/nursery_models.dart';
 import '../../shared/widgets/section_card.dart';
 import '../../shared/widgets/status_chip.dart';
 import '../dashboard/dashboard_controller.dart';
 
-class HistoryScreen extends ConsumerWidget {
+class HistoryScreen extends ConsumerStatefulWidget {
   const HistoryScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HistoryScreen> createState() => _HistoryScreenState();
+}
+
+class _HistoryScreenState extends ConsumerState<HistoryScreen> {
+  String _tab = 'sensor';
+  String _metric = 'temperature';
+  String _period = '7d';
+
+  @override
+  Widget build(BuildContext context) {
     final history = ref.watch(sensorHistoryProvider);
     final detections = ref.watch(detectionsProvider);
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       children: [
-        history.when(
-          data: (items) => SectionCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Expanded(
-                      child: Text(
-                        'Grafik Suhu & Kelembapan',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF0F172A),
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Row(
-                      children: [
-                        _ChartLegend(
-                          label: 'Suhu (°C)',
-                          color: AppTheme.primaryGreen,
-                        ),
-                        const SizedBox(width: 8),
-                        const _ChartLegend(
-                          label: 'Kelembapan (%)',
-                          color: Color(0xFFD97706),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 18),
-                SizedBox(
-                  height: 220,
-                  child: LineChart(
-                    LineChartData(
-                      minY: 15,
-                      maxY: 95,
-                      gridData: FlGridData(
-                        show: true,
-                        drawVerticalLine: false,
-                        getDrawingHorizontalLine: (value) => const FlLine(
-                          color: Color(0xFFF1F5F9),
-                          strokeWidth: 1,
-                        ),
-                      ),
-                      borderData: FlBorderData(show: false),
-                      titlesData: const FlTitlesData(
-                        rightTitles: AxisTitles(
-                          sideTitles: SideTitles(showTitles: false),
-                        ),
-                        topTitles: AxisTitles(
-                          sideTitles: SideTitles(showTitles: false),
-                        ),
-                        leftTitles: AxisTitles(
-                          sideTitles: SideTitles(
-                            showTitles: true,
-                            reservedSize: 30,
-                          ),
-                        ),
-                      ),
-                      lineBarsData: [
-                        LineChartBarData(
-                          spots: [
-                            for (var i = 0; i < items.length; i++)
-                              FlSpot(i.toDouble(), items[i].temperature),
-                          ],
-                          isCurved: true,
-                          color: AppTheme.primaryGreen,
-                          barWidth: 3.5,
-                          isStrokeCapRound: true,
-                          dotData: const FlDotData(show: true),
-                          belowBarData: BarAreaData(
-                            show: true,
-                            color: AppTheme.primaryGreen.withValues(alpha: 0.1),
-                          ),
-                        ),
-                        LineChartBarData(
-                          spots: [
-                            for (var i = 0; i < items.length; i++)
-                              FlSpot(i.toDouble(), items[i].humidity),
-                          ],
-                          isCurved: true,
-                          color: const Color(0xFFD97706),
-                          barWidth: 3.5,
-                          isStrokeCapRound: true,
-                          dotData: const FlDotData(show: true),
-                          belowBarData: BarAreaData(
-                            show: true,
-                            color: const Color(
-                              0xFFD97706,
-                            ).withValues(alpha: 0.08),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          loading: () => const Center(
-            child: CircularProgressIndicator(color: AppTheme.primaryGreen),
-          ),
-          error: (error, stackTrace) => Text('Error: $error'),
+        _TopTabs(
+          value: _tab,
+          onChanged: (value) => setState(() => _tab = value),
         ),
-        const SizedBox(height: 16),
-        detections.when(
-          data: (items) => SectionCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Log Riwayat Vision AI',
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF0F172A),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                for (final item in items)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            item.type == 'healthy'
-                                ? Icons.verified_rounded
-                                : Icons.warning_amber_rounded,
-                            color: item.type == 'healthy'
-                                ? AppTheme.primaryGreen
-                                : const Color(0xFFD97706),
-                            size: 20,
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  item.className,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                    color: Color(0xFF0F172A),
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                Text(
-                                  '${DateFormat('dd MMM yyyy HH:mm').format(item.detectedAt)} • ${item.type}',
-                                  style: const TextStyle(
-                                    fontSize: 11,
-                                    color: Color(0xFF64748B),
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          StatusChip(
-                            label: '${(item.confidence * 100).round()}%',
-                            color: item.type == 'healthy'
-                                ? AppTheme.primaryGreen
-                                : const Color(0xFFD97706),
-                          ),
-                        ],
+        const SizedBox(height: 12),
+        if (_tab == 'sensor')
+          history.when(
+            data: (items) => _SensorHistory(
+              items: items,
+              metric: _metric,
+              period: _period,
+              onMetricChanged: (value) => setState(() => _metric = value),
+              onPeriodChanged: (value) => setState(() => _period = value),
+            ),
+            loading: () => const Center(
+              child: Padding(
+                padding: EdgeInsets.all(32),
+                child: CircularProgressIndicator(color: AppTheme.primaryGreen),
+              ),
+            ),
+            error: (error, stackTrace) => Text('Error: $error'),
+          )
+        else
+          detections.when(
+            data: (items) => _VisionHistory(items: items),
+            loading: () => const Center(
+              child: Padding(
+                padding: EdgeInsets.all(32),
+                child: CircularProgressIndicator(color: AppTheme.primaryGreen),
+              ),
+            ),
+            error: (error, stackTrace) => Text('$error'),
+          ),
+      ],
+    );
+  }
+}
+
+class _SensorHistory extends StatelessWidget {
+  const _SensorHistory({
+    required this.items,
+    required this.metric,
+    required this.period,
+    required this.onMetricChanged,
+    required this.onPeriodChanged,
+  });
+
+  final List<SensorReading> items;
+  final String metric;
+  final String period;
+  final ValueChanged<String> onMetricChanged;
+  final ValueChanged<String> onPeriodChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final spec = _MetricSpec.fromKey(metric);
+    final values = [for (final item in items) spec.valueOf(item)];
+    final stats = _Stats.from(values);
+
+    return Column(
+      children: [
+        _PeriodControl(value: period, onChanged: onPeriodChanged),
+        const SizedBox(height: 10),
+        _MetricControl(value: metric, onChanged: onMetricChanged),
+        const SizedBox(height: 12),
+        _StatsGrid(stats: stats, unit: spec.unit),
+        const SizedBox(height: 12),
+        SectionCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Grafik ${spec.label}',
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900,
+                        color: AppTheme.textStrong,
                       ),
                     ),
                   ),
-              ],
-            ),
+                  _ChartLegend(label: spec.unit, color: spec.color),
+                ],
+              ),
+              const SizedBox(height: 18),
+              SizedBox(
+                height: 220,
+                child: LineChart(
+                  LineChartData(
+                    minY: stats.minY,
+                    maxY: stats.maxY,
+                    gridData: FlGridData(
+                      show: true,
+                      drawVerticalLine: false,
+                      getDrawingHorizontalLine: (value) => const FlLine(
+                        color: Color(0xFFF1F5F9),
+                        strokeWidth: 1,
+                      ),
+                    ),
+                    borderData: FlBorderData(show: false),
+                    titlesData: const FlTitlesData(
+                      rightTitles: AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
+                      topTitles: AxisTitles(
+                        sideTitles: SideTitles(showTitles: false),
+                      ),
+                      leftTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 34,
+                        ),
+                      ),
+                    ),
+                    lineBarsData: [
+                      LineChartBarData(
+                        spots: [
+                          for (var i = 0; i < values.length; i++)
+                            FlSpot(i.toDouble(), values[i]),
+                        ],
+                        isCurved: true,
+                        color: spec.color,
+                        barWidth: 3.5,
+                        isStrokeCapRound: true,
+                        dotData: const FlDotData(show: true),
+                        belowBarData: BarAreaData(
+                          show: true,
+                          color: spec.color.withValues(alpha: 0.1),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
-          loading: () => const SizedBox.shrink(),
-          error: (error, stackTrace) => Text('$error'),
         ),
       ],
+    );
+  }
+}
+
+class _VisionHistory extends StatelessWidget {
+  const _VisionHistory({required this.items});
+
+  final List<Detection> items;
+
+  @override
+  Widget build(BuildContext context) {
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Timeline Vision AI',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w900,
+              color: AppTheme.textStrong,
+            ),
+          ),
+          const SizedBox(height: 12),
+          for (final item in items)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: _VisionHistoryTile(item: item),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _VisionHistoryTile extends StatelessWidget {
+  const _VisionHistoryTile({required this.item});
+
+  final Detection item;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = switch (item.type) {
+      'healthy' => AppTheme.primaryGreen,
+      'disease' => AppTheme.critical,
+      'pest' => AppTheme.warning,
+      _ => AppTheme.textMuted,
+    };
+
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 46,
+            height: 42,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              item.type == 'healthy'
+                  ? Icons.verified_rounded
+                  : Icons.warning_amber_rounded,
+              color: color,
+              size: 22,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.className,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w900,
+                    color: AppTheme.textStrong,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  '${DateFormat('dd MMM yyyy HH:mm').format(item.detectedAt)} - ${item.cameraId}',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppTheme.textMuted,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          StatusChip(
+            label: '${(item.confidence * 100).round()}%',
+            color: color,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatsGrid extends StatelessWidget {
+  const _StatsGrid({required this.stats, required this.unit});
+
+  final _Stats stats;
+  final String unit;
+
+  @override
+  Widget build(BuildContext context) {
+    final items = [
+      ('Current', stats.current),
+      ('Average', stats.average),
+      ('Minimum', stats.min),
+      ('Maximum', stats.max),
+    ];
+
+    return GridView.builder(
+      itemCount: items.length,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
+        childAspectRatio: 2.6,
+      ),
+      itemBuilder: (context, index) {
+        final item = items[index];
+        return SectionCard(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                item.$1,
+                style: const TextStyle(
+                  fontSize: 11,
+                  color: AppTheme.textMuted,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              Text(
+                '${item.$2.toStringAsFixed(1)} $unit',
+                style: const TextStyle(
+                  fontSize: 15,
+                  color: AppTheme.textStrong,
+                  fontWeight: FontWeight.w900,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _TopTabs extends StatelessWidget {
+  const _TopTabs({required this.value, required this.onChanged});
+
+  final String value;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: SegmentedButton<String>(
+        showSelectedIcon: false,
+        segments: const [
+          ButtonSegment(value: 'sensor', label: Text('Sensor')),
+          ButtonSegment(value: 'vision', label: Text('Vision')),
+        ],
+        selected: {value},
+        onSelectionChanged: (selection) => onChanged(selection.first),
+      ),
+    );
+  }
+}
+
+class _PeriodControl extends StatelessWidget {
+  const _PeriodControl({required this.value, required this.onChanged});
+
+  final String value;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: SegmentedButton<String>(
+        showSelectedIcon: false,
+        segments: const [
+          ButtonSegment(value: 'today', label: Text('Hari ini')),
+          ButtonSegment(value: '7d', label: Text('7 hari')),
+          ButtonSegment(value: '30d', label: Text('30 hari')),
+        ],
+        selected: {value},
+        onSelectionChanged: (selection) => onChanged(selection.first),
+      ),
+    );
+  }
+}
+
+class _MetricControl extends StatelessWidget {
+  const _MetricControl({required this.value, required this.onChanged});
+
+  final String value;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: SegmentedButton<String>(
+        showSelectedIcon: false,
+        segments: const [
+          ButtonSegment(value: 'temperature', label: Text('Suhu')),
+          ButtonSegment(value: 'humidity', label: Text('Humid')),
+          ButtonSegment(value: 'light', label: Text('Cahaya')),
+          ButtonSegment(value: 'water', label: Text('Air')),
+        ],
+        selected: {value},
+        onSelectionChanged: (selection) => onChanged(selection.first),
+      ),
     );
   }
 }
@@ -238,11 +434,88 @@ class _ChartLegend extends StatelessWidget {
           label,
           style: const TextStyle(
             fontSize: 11,
-            color: Color(0xFF64748B),
-            fontWeight: FontWeight.w600,
+            color: AppTheme.textMuted,
+            fontWeight: FontWeight.w700,
           ),
         ),
       ],
+    );
+  }
+}
+
+class _MetricSpec {
+  const _MetricSpec({
+    required this.label,
+    required this.unit,
+    required this.color,
+    required this.valueOf,
+  });
+
+  final String label;
+  final String unit;
+  final Color color;
+  final double Function(SensorReading reading) valueOf;
+
+  static _MetricSpec fromKey(String key) {
+    return switch (key) {
+      'humidity' => _MetricSpec(
+        label: 'Kelembapan',
+        unit: '%',
+        color: AppTheme.warning,
+        valueOf: (reading) => reading.humidity,
+      ),
+      'light' => _MetricSpec(
+        label: 'Cahaya',
+        unit: 'lux',
+        color: AppTheme.teal,
+        valueOf: (reading) => reading.light,
+      ),
+      'water' => _MetricSpec(
+        label: 'Level air',
+        unit: 'cm',
+        color: AppTheme.infoBlue,
+        valueOf: (reading) => reading.ultrasonic,
+      ),
+      _ => _MetricSpec(
+        label: 'Suhu',
+        unit: 'C',
+        color: AppTheme.primaryGreen,
+        valueOf: (reading) => reading.temperature,
+      ),
+    };
+  }
+}
+
+class _Stats {
+  const _Stats({
+    required this.current,
+    required this.average,
+    required this.min,
+    required this.max,
+  });
+
+  final double current;
+  final double average;
+  final double min;
+  final double max;
+
+  double get minY => (min - 5).clamp(0, double.infinity).toDouble();
+  double get maxY => max + 5;
+
+  static _Stats from(List<double> values) {
+    if (values.isEmpty) {
+      return const _Stats(current: 0, average: 0, min: 0, max: 10);
+    }
+
+    final min = values.reduce((a, b) => a < b ? a : b);
+    final max = values.reduce((a, b) => a > b ? a : b);
+    final sum = values.fold<double>(0, (total, value) => total + value);
+
+    return _Stats(
+      current: values.last,
+      average: sum / values.length,
+      min: min,
+      max: max,
     );
   }
 }

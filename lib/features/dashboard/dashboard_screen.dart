@@ -20,15 +20,13 @@ class DashboardScreen extends ConsumerWidget {
       onRefresh: () => ref.refresh(dashboardProvider.future),
       child: dashboard.when(
         data: (snapshot) => _DashboardContent(snapshot: snapshot),
-        loading: () => const Center(
-          child: CircularProgressIndicator(color: AppTheme.primaryGreen),
-        ),
+        loading: () => const _DashboardSkeleton(),
         error: (error, stackTrace) => ListView(
           padding: const EdgeInsets.all(20),
           children: [
             SectionCard(
               child: Padding(
-                padding: const EdgeInsets.all(16.0),
+                padding: const EdgeInsets.all(16),
                 child: Text('Dashboard gagal dimuat: $error'),
               ),
             ),
@@ -46,192 +44,221 @@ class _DashboardContent extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final scheme = Theme.of(context).colorScheme;
-    final isHealthy =
-        snapshot.recommendation.status != 'CRITICAL' &&
-        snapshot.detection.type != 'disease';
+    final condition = _Condition.fromSnapshot(snapshot);
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
       children: [
-        // Modern Status Banner
-        SectionCard(
-          gradient: const LinearGradient(
-            colors: [
-              Color(0xFF064E3B), // Deep Emerald
-              Color(0xFF059669), // Emerald
-            ],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+        _GreetingCard(snapshot: snapshot),
+        const SizedBox(height: 12),
+        _ConditionBanner(snapshot: snapshot, condition: condition),
+        const SizedBox(height: 12),
+        _DashboardSection(
+          title: 'Sensor Realtime',
+          subtitle: 'Pembacaan terakhir dari node ESP32',
+          trailing: IconButton(
+            constraints: const BoxConstraints.tightFor(width: 34, height: 34),
+            padding: EdgeInsets.zero,
+            tooltip: 'Refresh',
+            onPressed: () => ref.invalidate(dashboardProvider),
+            icon: const Icon(
+              Icons.refresh_rounded,
+              color: AppTheme.primaryGreen,
+              size: 20,
+            ),
           ),
-          borderColor: const Color(0xFF047857),
-          padding: const EdgeInsets.all(14),
+          child: _SensorGrid(sensor: snapshot.sensor),
+        ),
+        const SizedBox(height: 12),
+        _DashboardSection(
+          title: 'Kontrol & Bukti AI',
+          subtitle: 'Aksi perangkat dan deteksi kamera terbaru',
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(7),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.18),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.grass_rounded,
-                      color: Colors.white,
-                      size: 18,
-                    ),
-                  ),
-                  const SizedBox(width: 9),
-                  const Expanded(
-                    child: Text(
-                      'Kondisi Padi',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14.5,
-                        fontWeight: FontWeight.w800,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.18),
-                      borderRadius: BorderRadius.circular(999),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.24),
-                      ),
-                    ),
-                    child: const Text(
-                      'ONLINE',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 5,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.warning_amber_rounded,
-                      size: 16,
-                      color: scheme.tertiary,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      snapshot.recommendation.status.split(' ').first,
-                      style: TextStyle(
-                        color: scheme.tertiary,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              _FanControl(fan: snapshot.fan),
               const SizedBox(height: 10),
-              Text(
-                snapshot.recommendation.cause,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 16,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                snapshot.recommendation.message,
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.9),
-                  fontSize: 13,
-                  height: 1.3,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
+              _LatestDetection(detection: snapshot.detection),
             ],
           ),
         ),
-        const SizedBox(height: 18),
-
-        Row(
-          children: [
-            const Expanded(
-              child: Text(
-                'Sensor Realtime',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF0F172A),
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            IconButton(
-              constraints: const BoxConstraints.tightFor(width: 36, height: 36),
-              padding: EdgeInsets.zero,
-              tooltip: 'Refresh',
-              onPressed: () => ref.invalidate(dashboardProvider),
-              icon: const Icon(
-                Icons.refresh_rounded,
-                color: AppTheme.primaryGreen,
-                size: 20,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        _SensorGrid(sensor: snapshot.sensor, isHealthy: isHealthy),
-
-        const SizedBox(height: 18),
-
-        // Section Title: Controls & AI
-        const Text(
-          'Kontrol AI',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w800,
-            color: Color(0xFF0F172A),
-          ),
-        ),
-        const SizedBox(height: 12),
-        _FanControl(fan: snapshot.fan),
-        const SizedBox(height: 12),
-        _LatestDetection(detection: snapshot.detection),
       ],
     );
   }
 }
 
+class _GreetingCard extends StatelessWidget {
+  const _GreetingCard({required this.snapshot});
+
+  final DashboardSnapshot snapshot;
+
+  @override
+  Widget build(BuildContext context) {
+    final hour = DateTime.now().hour;
+    final greeting = hour < 11
+        ? 'Selamat pagi'
+        : hour < 15
+        ? 'Selamat siang'
+        : hour < 18
+        ? 'Selamat sore'
+        : 'Selamat malam';
+    final icon = hour < 18 ? Icons.wb_sunny_rounded : Icons.nights_stay_rounded;
+
+    return SectionCard(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(9),
+            decoration: BoxDecoration(
+              color: AppTheme.primaryGreen.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: AppTheme.primaryGreen, size: 22),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '$greeting, Petani',
+                  style: const TextStyle(
+                    color: AppTheme.textStrong,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  'Nursery ${snapshot.device.code} dipantau secara realtime',
+                  style: const TextStyle(
+                    color: AppTheme.textMuted,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ConditionBanner extends StatelessWidget {
+  const _ConditionBanner({required this.snapshot, required this.condition});
+
+  final DashboardSnapshot snapshot;
+  final _Condition condition;
+
+  @override
+  Widget build(BuildContext context) {
+    final updatedAt = DateFormat.Hm().format(snapshot.sensor.createdAt);
+
+    return SectionCard(
+      gradient: LinearGradient(
+        colors: condition.gradient,
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
+      borderColor: condition.borderColor,
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(condition.icon, color: Colors.white, size: 20),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      condition.title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 19,
+                        fontWeight: FontWeight.w900,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      'Update $updatedAt WIB',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.82),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              _DarkStatusPill(label: snapshot.device.status.toUpperCase()),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Text(
+            snapshot.recommendation.cause,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 14.5,
+              fontWeight: FontWeight.w800,
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 5),
+          Text(
+            snapshot.recommendation.message,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.9),
+              fontSize: 12.5,
+              height: 1.3,
+            ),
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _BannerMetric(
+                  label: 'Kelembapan',
+                  value: '${snapshot.sensor.humidity.toStringAsFixed(0)}%',
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _BannerMetric(
+                  label: 'Deteksi',
+                  value: snapshot.detection.type.toUpperCase(),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _SensorGrid extends StatelessWidget {
-  const _SensorGrid({required this.sensor, required this.isHealthy});
+  const _SensorGrid({required this.sensor});
 
   final SensorReading sensor;
-  final bool isHealthy;
 
   @override
   Widget build(BuildContext context) {
@@ -239,23 +266,34 @@ class _SensorGrid extends StatelessWidget {
       _SensorItem(
         icon: Icons.thermostat_rounded,
         label: 'Suhu',
-        value: '${sensor.temperature.toStringAsFixed(1)}°C',
-        status: 'NORMAL',
-        accentColor: AppTheme.primaryGreen,
+        value: '${sensor.temperature.toStringAsFixed(1)} C',
+        status: sensor.temperature >= 32 ? 'WASPADA' : 'NORMAL',
+        accentColor: sensor.temperature >= 32
+            ? AppTheme.warning
+            : AppTheme.primaryGreen,
       ),
       _SensorItem(
         icon: Icons.water_drop_rounded,
         label: 'Kelembapan',
         value: '${sensor.humidity.toStringAsFixed(0)}%',
-        status: 'WASPADA',
-        accentColor: const Color(0xFFD97706), // Amber
+        status: sensor.humidity >= 80 ? 'TINGGI' : 'NORMAL',
+        accentColor: sensor.humidity >= 80
+            ? AppTheme.warning
+            : AppTheme.primaryGreen,
       ),
       _SensorItem(
         icon: Icons.wb_sunny_rounded,
         label: 'Cahaya',
-        value: '${sensor.light.toStringAsFixed(0)} Lux',
+        value: '${sensor.light.toStringAsFixed(0)} lux',
         status: 'OPTIMAL',
-        accentColor: const Color(0xFF0D9488), // Teal
+        accentColor: AppTheme.teal,
+      ),
+      _SensorItem(
+        icon: Icons.waves_rounded,
+        label: 'Air',
+        value: '${sensor.ultrasonic.toStringAsFixed(0)} cm',
+        status: 'STABIL',
+        accentColor: AppTheme.infoBlue,
       ),
       _SensorItem(
         icon: Icons.grass_rounded,
@@ -279,20 +317,11 @@ class _SensorGrid extends StatelessWidget {
         accentColor: AppTheme.primaryGreen,
       ),
       _SensorItem(
-        icon: Icons.waves_rounded,
-        label: 'Air',
-        value: '${sensor.ultrasonic.toStringAsFixed(0)} cm',
-        status: 'STABIL',
-        accentColor: const Color(0xFF0284C7), // Sky Blue
-      ),
-      _SensorItem(
-        icon: Icons.health_and_safety_rounded,
-        label: 'Kesehatan',
-        value: isHealthy ? 'Sehat' : 'Tidak Sehat',
-        status: isHealthy ? 'SEHAT' : 'SAKIT',
-        accentColor: isHealthy
-            ? AppTheme.primaryGreen
-            : const Color(0xFFEF4444),
+        icon: Icons.schedule_rounded,
+        label: 'Data',
+        value: DateFormat.Hm().format(sensor.createdAt),
+        status: 'LIVE',
+        accentColor: AppTheme.teal,
       ),
     ];
 
@@ -307,73 +336,69 @@ class _SensorGrid extends StatelessWidget {
             crossAxisCount: crossAxisCount,
             crossAxisSpacing: 8,
             mainAxisSpacing: 8,
-            childAspectRatio: constraints.maxWidth > 620
-                ? 1.55
-                : constraints.maxWidth > 360
-                ? 1.42
-                : 1.28,
+            childAspectRatio: constraints.maxWidth > 620 ? 1.7 : 1.48,
           ),
-          itemBuilder: (context, index) {
-            final item = items[index];
-            return SectionCard(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: item.accentColor.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Icon(
-                          item.icon,
-                          color: item.accentColor,
-                          size: 17,
-                        ),
-                      ),
-                      const SizedBox(width: 4),
-                      Flexible(
-                        child: StatusChip(
-                          label: item.status,
-                          color: item.accentColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    item.label,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: Color(0xFF64748B),
-                      fontWeight: FontWeight.w600,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      item.value,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF0F172A),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
+          itemBuilder: (context, index) => _SensorCard(item: items[index]),
         );
       },
+    );
+  }
+}
+
+class _SensorCard extends StatelessWidget {
+  const _SensorCard({required this.item});
+
+  final _SensorItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    return SectionCard(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: item.accentColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(item.icon, color: item.accentColor, size: 17),
+              ),
+              const Spacer(),
+              Flexible(
+                child: StatusChip(label: item.status, color: item.accentColor),
+              ),
+            ],
+          ),
+          const SizedBox(height: 7),
+          Text(
+            item.label,
+            style: const TextStyle(
+              fontSize: 11,
+              color: AppTheme.textMuted,
+              fontWeight: FontWeight.w600,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              item.value,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w900,
+                color: AppTheme.textStrong,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -385,35 +410,24 @@ class _LatestDetection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isHealthy = detection.type == 'healthy';
+    final color = isHealthy ? AppTheme.primaryGreen : AppTheme.warning;
+
     return SectionCard(
       child: Row(
         children: [
           Container(
-            width: 68,
-            height: 68,
+            width: 72,
+            height: 72,
             decoration: BoxDecoration(
-              color: const Color(0xFFFEF2F2),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFFFCA5A5), width: 1),
+              color: color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: color.withValues(alpha: 0.28)),
             ),
-            child: const Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.bug_report_rounded,
-                  color: Color(0xFFDC2626),
-                  size: 28,
-                ),
-                SizedBox(height: 2),
-                Text(
-                  'AI',
-                  style: TextStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFFDC2626),
-                  ),
-                ),
-              ],
+            child: Icon(
+              isHealthy ? Icons.verified_rounded : Icons.center_focus_strong,
+              color: color,
+              size: 30,
             ),
           ),
           const SizedBox(width: 12),
@@ -422,24 +436,22 @@ class _LatestDetection extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     const Expanded(
                       child: Text(
-                        'Deteksi Terbaru',
+                        'Deteksi terbaru',
                         style: TextStyle(
                           fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF64748B),
+                          fontWeight: FontWeight.w700,
+                          color: AppTheme.textMuted,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    const SizedBox(width: 6),
                     StatusChip(
                       label: '${(detection.confidence * 100).round()}%',
-                      color: AppTheme.primaryGreen,
+                      color: color,
                     ),
                   ],
                 ),
@@ -448,18 +460,18 @@ class _LatestDetection extends StatelessWidget {
                   detection.className,
                   style: const TextStyle(
                     fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF0F172A),
+                    fontWeight: FontWeight.w900,
+                    color: AppTheme.textStrong,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  '${detection.type.toUpperCase()} • ${detection.cameraId}',
+                  '${detection.type.toUpperCase()} - ${detection.cameraId}',
                   style: const TextStyle(
                     fontSize: 12,
-                    color: Color(0xFF64748B),
+                    color: AppTheme.textMuted,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -498,68 +510,58 @@ class _FanControl extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: isFanOn
+                      ? AppTheme.primaryGreen.withValues(alpha: 0.12)
+                      : const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.air_rounded,
+                  color: isFanOn ? AppTheme.primaryGreen : AppTheme.textMuted,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 10),
               Expanded(
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: isFanOn
-                            ? AppTheme.primaryGreen.withValues(alpha: 0.12)
-                            : const Color(0xFFF1F5F9),
-                        borderRadius: BorderRadius.circular(10),
+                    const Text(
+                      'Kipas ventilasi',
+                      style: TextStyle(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w900,
+                        color: AppTheme.textStrong,
                       ),
-                      child: Icon(
-                        Icons.air_rounded,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      'Status ${fanState.status}',
+                      style: TextStyle(
+                        fontSize: 12,
                         color: isFanOn
                             ? AppTheme.primaryGreen
-                            : const Color(0xFF64748B),
-                        size: 22,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Kipas Ventilasi',
-                            style: TextStyle(
-                              fontSize: 14.5,
-                              fontWeight: FontWeight.w800,
-                              color: Color(0xFF0F172A),
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          Text(
-                            'Status: ${fanState.status}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: isFanOn
-                                  ? AppTheme.primaryGreen
-                                  : const Color(0xFF64748B),
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ],
+                            : AppTheme.textMuted,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
               StatusChip(
                 label: fanState.mode,
                 color: fanState.mode == 'AUTO'
                     ? AppTheme.primaryGreen
-                    : const Color(0xFF0D9488),
+                    : AppTheme.teal,
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           SizedBox(
             width: double.infinity,
             child: SegmentedButton<String>(
@@ -582,22 +584,23 @@ class _FanControl extends ConsumerWidget {
             ),
           ),
           if (fanState.mode == 'MANUAL') ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
                 color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: const Color(0xFFE2E8F0)),
               ),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text(
-                    'Saklar Daya Kipas',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF334155),
+                  const Expanded(
+                    child: Text(
+                      'Saklar daya kipas',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF334155),
+                      ),
                     ),
                   ),
                   Switch(
@@ -615,6 +618,265 @@ class _FanControl extends ConsumerWidget {
           ],
         ],
       ),
+    );
+  }
+}
+
+class _DashboardSection extends StatelessWidget {
+  const _DashboardSection({
+    required this.title,
+    required this.subtitle,
+    required this.child,
+    this.trailing,
+  });
+
+  final String title;
+  final String subtitle;
+  final Widget child;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.cardBorder),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primaryGreen.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 15.5,
+                        fontWeight: FontWeight.w900,
+                        color: AppTheme.textStrong,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.textMuted,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              ?trailing,
+            ],
+          ),
+          const SizedBox(height: 10),
+          child,
+        ],
+      ),
+    );
+  }
+}
+
+class _DashboardSkeleton extends StatelessWidget {
+  const _DashboardSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+      children: const [
+        _SkeletonBlock(height: 92),
+        SizedBox(height: 12),
+        _SkeletonBlock(height: 176),
+        SizedBox(height: 12),
+        _SkeletonBlock(height: 330),
+        SizedBox(height: 12),
+        _SkeletonBlock(height: 250),
+      ],
+    );
+  }
+}
+
+class _SkeletonBlock extends StatelessWidget {
+  const _SkeletonBlock({required this.height});
+
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: height,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.cardBorder),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _SkeletonLine(width: MediaQuery.sizeOf(context).width * 0.42),
+            const SizedBox(height: 10),
+            const _SkeletonLine(width: 140),
+            const Spacer(),
+            Row(
+              children: const [
+                Expanded(child: _SkeletonLine(width: double.infinity)),
+                SizedBox(width: 10),
+                Expanded(child: _SkeletonLine(width: double.infinity)),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SkeletonLine extends StatelessWidget {
+  const _SkeletonLine({required this.width});
+
+  final double width;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width,
+      height: 12,
+      decoration: BoxDecoration(
+        color: const Color(0xFFEAF3EE),
+        borderRadius: BorderRadius.circular(99),
+      ),
+    );
+  }
+}
+
+class _BannerMetric extends StatelessWidget {
+  const _BannerMetric({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.78),
+              fontSize: 10.5,
+              fontWeight: FontWeight.w700,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 13,
+              fontWeight: FontWeight.w900,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DarkStatusPill extends StatelessWidget {
+  const _DarkStatusPill({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.16),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 10,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    );
+  }
+}
+
+class _Condition {
+  const _Condition({
+    required this.title,
+    required this.icon,
+    required this.gradient,
+    required this.borderColor,
+  });
+
+  final String title;
+  final IconData icon;
+  final List<Color> gradient;
+  final Color borderColor;
+
+  static _Condition fromSnapshot(DashboardSnapshot snapshot) {
+    final status = snapshot.recommendation.status.toUpperCase();
+    final hasDisease = snapshot.detection.type == 'disease';
+    final hasPest = snapshot.detection.type == 'pest';
+
+    if (status.contains('CRITICAL')) {
+      return const _Condition(
+        title: 'Critical',
+        icon: Icons.error_rounded,
+        gradient: [Color(0xFF7F1D1D), AppTheme.critical],
+        borderColor: Color(0xFF991B1B),
+      );
+    }
+    if (status.contains('PERLU') || hasDisease || hasPest) {
+      return const _Condition(
+        title: 'Perlu Perhatian',
+        icon: Icons.warning_amber_rounded,
+        gradient: [Color(0xFF92400E), AppTheme.warning],
+        borderColor: Color(0xFFB45309),
+      );
+    }
+    return const _Condition(
+      title: 'Normal',
+      icon: Icons.verified_rounded,
+      gradient: [Color(0xFF064E3B), AppTheme.primaryGreen],
+      borderColor: AppTheme.primaryGreenDark,
     );
   }
 }

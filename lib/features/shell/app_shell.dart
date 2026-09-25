@@ -52,18 +52,24 @@ class _AppShellState extends ConsumerState<AppShell> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(
-                    'Halo, Petani',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF0F172A),
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  Row(
+                    children: [
+                      Text(
+                        'Halo, Petani',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF0F172A),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      SizedBox(width: 4),
+                      Text('👋', style: TextStyle(fontSize: 13)),
+                    ],
                   ),
                   Text(
-                    'Monitoring padi',
+                    'Cek kondisi nursery hari ini',
                     style: TextStyle(
                       fontSize: 10.5,
                       fontWeight: FontWeight.w500,

@@ -16,8 +16,7 @@ class VisionScreen extends ConsumerStatefulWidget {
 }
 
 class _VisionScreenState extends ConsumerState<VisionScreen> {
-  static const _pageSize = 4;
-  int _page = 0;
+  String _filter = 'all';
 
   @override
   Widget build(BuildContext context) {
@@ -25,218 +24,25 @@ class _VisionScreenState extends ConsumerState<VisionScreen> {
 
     return detections.when(
       data: (items) {
-        final latest = items.first;
-        final pageCount = (items.length / _pageSize).ceil().clamp(1, 999);
-        final currentPage = _page.clamp(0, pageCount - 1);
-        if (currentPage != _page) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (mounted) setState(() => _page = currentPage);
-          });
+        if (items.isEmpty) {
+          return const _EmptyVision();
         }
-        final start = currentPage * _pageSize;
-        final pagedItems = items.skip(start).take(_pageSize).toList();
+
+        final filtered = _filter == 'all'
+            ? items
+            : items.where((item) => item.type == _filter).toList();
+        final latest = filtered.isEmpty ? items.first : filtered.first;
 
         return ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
           children: [
-            SectionCard(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.videocam_rounded,
-                        color: AppTheme.primaryGreen,
-                        size: 20,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          latest.cameraId,
-                          style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF0F172A),
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      const Text(
-                        '1080p',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Color(0xFF64748B),
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(14),
-                    child: AspectRatio(
-                      aspectRatio: 16 / 9,
-                      child: Container(
-                        color: const Color(0xFF0F172A),
-                        child: Stack(
-                          children: [
-                            Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.grass_rounded,
-                                    color: Colors.white.withValues(alpha: 0.16),
-                                    size: 64,
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    'ORYZA SMART - CAM 01',
-                                    style: TextStyle(
-                                      color: Colors.white.withValues(
-                                        alpha: 0.34,
-                                      ),
-                                      fontSize: 10,
-                                      letterSpacing: 0,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Positioned(
-                              top: 12,
-                              left: 12,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withValues(alpha: 0.6),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: const Row(
-                                  children: [
-                                    Icon(
-                                      Icons.fiber_manual_record_rounded,
-                                      color: Color(0xFFEF4444),
-                                      size: 10,
-                                    ),
-                                    SizedBox(width: 4),
-                                    Text(
-                                      'REC',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 10,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            Positioned(
-                              left: 64,
-                              top: 38,
-                              width: 144,
-                              height: 84,
-                              child: DecoratedBox(
-                                decoration: BoxDecoration(
-                                  border: Border.all(
-                                    color: const Color(0xFFEF4444),
-                                    width: 2,
-                                  ),
-                                  borderRadius: BorderRadius.circular(6),
-                                  color: const Color(
-                                    0xFFEF4444,
-                                  ).withValues(alpha: 0.1),
-                                ),
-                              ),
-                            ),
-                            Positioned(
-                              left: 64,
-                              top: 16,
-                              child: Container(
-                                constraints: const BoxConstraints(
-                                  maxWidth: 190,
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 3,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFEF4444),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(
-                                  '${latest.className} ${(latest.confidence * 100).round()}%',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w800,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF8FAFC),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                latest.className,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w800,
-                                  color: Color(0xFF0F172A),
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                DateFormat(
-                                  'dd MMM HH:mm',
-                                ).format(latest.detectedAt),
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Color(0xFF64748B),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        StatusChip(
-                          label: '${(latest.confidence * 100).round()}%',
-                          color: AppTheme.primaryGreen,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+            _CameraEvidence(detection: latest),
+            const SizedBox(height: 12),
+            _FilterControl(
+              value: _filter,
+              onChanged: (value) => setState(() => _filter = value),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             SectionCard(
               padding: const EdgeInsets.all(14),
               child: Column(
@@ -246,58 +52,30 @@ class _VisionScreenState extends ConsumerState<VisionScreen> {
                     children: [
                       const Expanded(
                         child: Text(
-                          'Riwayat',
+                          'Riwayat deteksi',
                           style: TextStyle(
                             fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                            color: Color(0xFF0F172A),
+                            fontWeight: FontWeight.w900,
+                            color: AppTheme.textStrong,
                           ),
                         ),
                       ),
                       Text(
-                        '${currentPage + 1}/$pageCount',
+                        '${filtered.length} data',
                         style: const TextStyle(
                           fontSize: 11,
-                          color: Color(0xFF64748B),
+                          color: AppTheme.textMuted,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 10),
-                  for (final item in pagedItems) _DetectionHistoryTile(item),
-                  if (pageCount > 1) ...[
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        IconButton(
-                          constraints: const BoxConstraints.tightFor(
-                            width: 34,
-                            height: 34,
-                          ),
-                          padding: EdgeInsets.zero,
-                          tooltip: 'Sebelumnya',
-                          onPressed: currentPage == 0
-                              ? null
-                              : () => setState(() => _page--),
-                          icon: const Icon(Icons.chevron_left_rounded),
-                        ),
-                        IconButton(
-                          constraints: const BoxConstraints.tightFor(
-                            width: 34,
-                            height: 34,
-                          ),
-                          padding: EdgeInsets.zero,
-                          tooltip: 'Berikutnya',
-                          onPressed: currentPage >= pageCount - 1
-                              ? null
-                              : () => setState(() => _page++),
-                          icon: const Icon(Icons.chevron_right_rounded),
-                        ),
-                      ],
-                    ),
-                  ],
+                  if (filtered.isEmpty)
+                    const _EmptyListMessage()
+                  else
+                    for (final item in filtered.take(8))
+                      _DetectionHistoryTile(item),
                 ],
               ),
             ),
@@ -317,6 +95,189 @@ class _VisionScreenState extends ConsumerState<VisionScreen> {
   }
 }
 
+class _CameraEvidence extends StatelessWidget {
+  const _CameraEvidence({required this.detection});
+
+  final Detection detection;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _detectionColor(detection.type);
+
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppTheme.teal.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.videocam_rounded,
+                  color: AppTheme.teal,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      detection.cameraId,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900,
+                        color: AppTheme.textStrong,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const Text(
+                      'Snapshot analisis AI',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppTheme.textMuted,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              StatusChip(label: 'ONLINE', color: AppTheme.teal, isPulse: true),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: AspectRatio(
+              aspectRatio: 16 / 9,
+              child: Container(
+                color: const Color(0xFF111827),
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: CustomPaint(painter: _FieldPreviewPainter()),
+                    ),
+                    Positioned(
+                      top: 12,
+                      left: 12,
+                      child: _CameraBadge(label: 'REC'),
+                    ),
+                    Positioned(
+                      right: 12,
+                      top: 12,
+                      child: _CameraBadge(label: '1080p'),
+                    ),
+                    Positioned(
+                      left: 52,
+                      top: 42,
+                      width: 142,
+                      height: 82,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          border: Border.all(color: color, width: 2),
+                          borderRadius: BorderRadius.circular(6),
+                          color: color.withValues(alpha: 0.1),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      left: 52,
+                      top: 18,
+                      child: Container(
+                        constraints: const BoxConstraints(maxWidth: 210),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: color,
+                          borderRadius: BorderRadius.circular(5),
+                        ),
+                        child: Text(
+                          '${detection.className} ${(detection.confidence * 100).round()}%',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _EvidenceMetric(
+                  label: 'Kelas',
+                  value: detection.className,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _EvidenceMetric(
+                  label: 'Waktu',
+                  value: DateFormat(
+                    'dd MMM HH:mm',
+                  ).format(detection.detectedAt),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              StatusChip(label: detection.type.toUpperCase(), color: color),
+              const SizedBox(width: 8),
+              StatusChip(
+                label: '${(detection.confidence * 100).round()}% confidence',
+                color: AppTheme.primaryGreen,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FilterControl extends StatelessWidget {
+  const _FilterControl({required this.value, required this.onChanged});
+
+  final String value;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: SegmentedButton<String>(
+        showSelectedIcon: false,
+        segments: const [
+          ButtonSegment(value: 'all', label: Text('Semua')),
+          ButtonSegment(value: 'disease', label: Text('Penyakit')),
+          ButtonSegment(value: 'pest', label: Text('Hama')),
+          ButtonSegment(value: 'healthy', label: Text('Sehat')),
+        ],
+        selected: {value},
+        onSelectionChanged: (selection) => onChanged(selection.first),
+      ),
+    );
+  }
+}
+
 class _DetectionHistoryTile extends StatelessWidget {
   const _DetectionHistoryTile(this.item);
 
@@ -324,12 +285,11 @@ class _DetectionHistoryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isHealthy = item.type == 'healthy';
-    final color = isHealthy ? AppTheme.primaryGreen : const Color(0xFFD97706);
+    final color = _detectionColor(item.type);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+      padding: const EdgeInsets.all(9),
       decoration: BoxDecoration(
         color: const Color(0xFFF8FAFC),
         borderRadius: BorderRadius.circular(10),
@@ -338,12 +298,14 @@ class _DetectionHistoryTile extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            width: 8,
-            height: 36,
+            width: 48,
+            height: 42,
             decoration: BoxDecoration(
-              color: color,
-              borderRadius: BorderRadius.circular(999),
+              color: color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: color.withValues(alpha: 0.18)),
             ),
+            child: Icon(_detectionIcon(item.type), color: color, size: 22),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -354,8 +316,8 @@ class _DetectionHistoryTile extends StatelessWidget {
                   item.className,
                   style: const TextStyle(
                     fontSize: 13,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF0F172A),
+                    fontWeight: FontWeight.w900,
+                    color: AppTheme.textStrong,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -365,7 +327,7 @@ class _DetectionHistoryTile extends StatelessWidget {
                   '${DateFormat('dd MMM HH:mm').format(item.detectedAt)} - ${item.cameraId}',
                   style: const TextStyle(
                     fontSize: 11,
-                    color: Color(0xFF64748B),
+                    color: AppTheme.textMuted,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -382,4 +344,140 @@ class _DetectionHistoryTile extends StatelessWidget {
       ),
     );
   }
+}
+
+class _EvidenceMetric extends StatelessWidget {
+  const _EvidenceMetric({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 11,
+              color: AppTheme.textMuted,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 13,
+              color: AppTheme.textStrong,
+              fontWeight: FontWeight.w900,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CameraBadge extends StatelessWidget {
+  const _CameraBadge({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.56),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 10,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyVision extends StatelessWidget {
+  const _EmptyVision();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(child: Text('Belum ada data deteksi vision'));
+  }
+}
+
+class _EmptyListMessage extends StatelessWidget {
+  const _EmptyListMessage();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.symmetric(vertical: 18),
+      child: Center(
+        child: Text(
+          'Tidak ada data untuk filter ini',
+          style: TextStyle(color: AppTheme.textMuted),
+        ),
+      ),
+    );
+  }
+}
+
+class _FieldPreviewPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final sky = Paint()..color = const Color(0xFF1F2937);
+    final bed = Paint()..color = const Color(0xFF064E3B);
+    final rowPaint = Paint()
+      ..color = const Color(0xFF10B981).withValues(alpha: 0.34)
+      ..strokeWidth = 2;
+
+    canvas.drawRect(Offset.zero & size, sky);
+    canvas.drawRect(
+      Rect.fromLTWH(0, size.height * 0.35, size.width, size.height * 0.65),
+      bed,
+    );
+
+    for (var i = 0; i < 8; i++) {
+      final y = size.height * (0.42 + i * 0.07);
+      canvas.drawLine(Offset(0, y), Offset(size.width, y + 20), rowPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+Color _detectionColor(String type) {
+  return switch (type) {
+    'healthy' => AppTheme.primaryGreen,
+    'disease' => AppTheme.critical,
+    'pest' => AppTheme.warning,
+    _ => AppTheme.textMuted,
+  };
+}
+
+IconData _detectionIcon(String type) {
+  return switch (type) {
+    'healthy' => Icons.verified_rounded,
+    'disease' => Icons.coronavirus_rounded,
+    'pest' => Icons.bug_report_rounded,
+    _ => Icons.help_rounded,
+  };
 }

@@ -82,19 +82,19 @@ class AlertsScreen extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Notif',
+                        'Alert',
                         style: Theme.of(context).textTheme.titleMedium
                             ?.copyWith(
-                              fontWeight: FontWeight.w800,
-                              color: const Color(0xFF0F172A),
+                              fontWeight: FontWeight.w900,
+                              color: AppTheme.textStrong,
                             ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                       Text(
                         '${alerts.length} aktif',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: const Color(0xFF64748B),
+                        style: const TextStyle(
+                          color: AppTheme.textMuted,
                           fontSize: 11,
                         ),
                         maxLines: 1,
@@ -136,8 +136,8 @@ class AlertsScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 3),
                     const Text(
-                      'Tidak ada notif aktif',
-                      style: TextStyle(color: Color(0xFF64748B), fontSize: 12),
+                      'Tidak ada alert aktif',
+                      style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
                     ),
                   ],
                 ),
@@ -171,9 +171,7 @@ class _AlertCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isCritical = alert.level == 'CRITICAL';
-    final color = isCritical
-        ? Theme.of(context).colorScheme.error
-        : Theme.of(context).colorScheme.tertiary;
+    final color = isCritical ? AppTheme.critical : AppTheme.warning;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
@@ -203,13 +201,13 @@ class _AlertCard extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          alert.title.split(' ').first,
+                          alert.title,
                           style: const TextStyle(
-                            fontWeight: FontWeight.w700,
+                            fontWeight: FontWeight.w900,
                             fontSize: 14,
-                            color: Color(0xFF0F172A),
+                            color: AppTheme.textStrong,
                           ),
-                          maxLines: 1,
+                          maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -236,9 +234,19 @@ class _AlertCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 6),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: StatusChip(label: alert.level, color: color),
+                  Row(
+                    children: [
+                      StatusChip(label: alert.level, color: color),
+                      const SizedBox(width: 8),
+                      Text(
+                        isCritical ? 'Cek sekarang' : 'Pantau kondisi',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: color,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),

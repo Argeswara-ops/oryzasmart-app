@@ -30,13 +30,13 @@ class SectionCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: gradient == null ? cardColor : null,
         gradient: gradient,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: bColor, width: 1),
         boxShadow: [
           BoxShadow(
             color: const Color(0xFF059669).withValues(alpha: 0.05),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
@@ -48,7 +48,7 @@ class SectionCard extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(12),
           child: widgetContent,
         ),
       );
