@@ -139,7 +139,7 @@ class _GreetingCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '$greeting, @$firstName',
+                  '$greeting, $firstName 👋',
                   style: const TextStyle(
                     color: AppTheme.textStrong,
                     fontSize: 15,
@@ -282,7 +282,7 @@ class _SensorGrid extends StatelessWidget {
         status: sensor.temperature >= 32 ? 'WASPADA' : 'NORMAL',
         accentColor: sensor.temperature >= 32
             ? AppTheme.warning
-            : AppTheme.primaryGreen,
+            : AppTheme.critical,
       ),
       _SensorItem(
         icon: Icons.water_drop_rounded,
@@ -291,14 +291,14 @@ class _SensorGrid extends StatelessWidget {
         status: sensor.humidity >= 80 ? 'TINGGI' : 'NORMAL',
         accentColor: sensor.humidity >= 80
             ? AppTheme.warning
-            : AppTheme.primaryGreen,
+            : AppTheme.infoBlue,
       ),
       _SensorItem(
         icon: Icons.wb_sunny_rounded,
         label: 'Cahaya',
         value: '${sensor.light.toStringAsFixed(0)} lux',
         status: 'OPTIMAL',
-        accentColor: AppTheme.teal,
+        accentColor: AppTheme.warning,
       ),
       _SensorItem(
         icon: Icons.waves_rounded,
@@ -319,14 +319,14 @@ class _SensorGrid extends StatelessWidget {
         label: 'Fosfor',
         value: '${sensor.phosphorus.toStringAsFixed(0)} mg/kg',
         status: 'CUKUP',
-        accentColor: AppTheme.primaryGreen,
+        accentColor: AppTheme.teal,
       ),
       _SensorItem(
         icon: Icons.eco_rounded,
         label: 'Kalium',
         value: '${sensor.potassium.toStringAsFixed(0)} mg/kg',
         status: 'CUKUP',
-        accentColor: AppTheme.primaryGreen,
+        accentColor: AppTheme.primaryGreenDark,
       ),
       _SensorItem(
         icon: Icons.schedule_rounded,
