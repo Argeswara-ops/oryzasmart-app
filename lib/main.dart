@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/api/api_providers.dart';
@@ -7,7 +8,9 @@ import 'features/auth/login_screen.dart';
 import 'features/shell/app_shell.dart';
 import 'shared/repositories/nursery_repository.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await dotenv.load(isOptional: true);
   runApp(const ProviderScope(child: SmartRiceNurseryApp()));
 }
 

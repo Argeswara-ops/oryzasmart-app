@@ -106,15 +106,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 color: AppTheme.textStrong,
               ),
             ),
-            children: const [
+            children: [
               _ConfigField(title: 'Backend API', value: AppConfig.apiBaseUrl),
-              SizedBox(height: 10),
-              _ConfigField(
+              const SizedBox(height: 10),
+              const _ConfigField(
                 title: 'MQTT Sensor',
                 value: AppConfig.mqttSensorTopic,
               ),
-              SizedBox(height: 10),
-              _ConfigField(
+              const SizedBox(height: 10),
+              const _ConfigField(
                 title: 'MQTT Kipas',
                 value: AppConfig.mqttFanCommandTopic,
               ),
