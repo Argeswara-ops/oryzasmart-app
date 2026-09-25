@@ -19,24 +19,6 @@ class HistoryScreen extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              'Analitik Tren Telemetri Sensor',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF64748B),
-              ),
-            ),
-            const StatusChip(
-              label: 'TELEMETRY LOG',
-              color: AppTheme.primaryGreen,
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
         history.when(
           data: (items) => SectionCard(
             child: Column(
@@ -131,7 +113,9 @@ class HistoryScreen extends ConsumerWidget {
                           dotData: const FlDotData(show: true),
                           belowBarData: BarAreaData(
                             show: true,
-                            color: const Color(0xFFD97706).withValues(alpha: 0.08),
+                            color: const Color(
+                              0xFFD97706,
+                            ).withValues(alpha: 0.08),
                           ),
                         ),
                       ],
@@ -262,4 +246,3 @@ class _ChartLegend extends StatelessWidget {
     );
   }
 }
-

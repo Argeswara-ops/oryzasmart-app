@@ -1,5 +1,5 @@
-import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
 
 import 'package:padiapps/main.dart';
 
@@ -10,10 +10,9 @@ void main() {
     expect(find.text('PADI APPS'), findsOneWidget);
     expect(find.text('Masuk Akun'), findsOneWidget);
 
-    await tester.tap(find.text('MASUK MONITORING'));
+    await tester.tap(find.text('Masuk'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Halo, Petani Modern! 👋'), findsOneWidget);
+    expect(find.text('Halo, Petani'), findsOneWidget);
   });
 }
-

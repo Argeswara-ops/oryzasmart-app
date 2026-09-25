@@ -18,29 +18,6 @@ class DevicesScreen extends ConsumerWidget {
       data: (snapshot) => ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Daftar Node Mikrokontroler',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF64748B),
-                ),
-              ),
-              IconButton(
-                onPressed: () => ref.refresh(dashboardProvider),
-                icon: const Icon(
-                  Icons.refresh_rounded,
-                  color: AppTheme.primaryGreen,
-                ),
-                tooltip: 'Refresh Perangkat',
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-
           // Main Sensor Node Gateway Card
           SectionCard(
             child: Column(
@@ -55,7 +32,9 @@ class DevicesScreen extends ConsumerWidget {
                           Container(
                             padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
-                              color: AppTheme.primaryGreen.withValues(alpha: 0.12),
+                              color: AppTheme.primaryGreen.withValues(
+                                alpha: 0.12,
+                              ),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: const Icon(
@@ -118,7 +97,9 @@ class DevicesScreen extends ConsumerWidget {
                       child: _InfoTile(
                         icon: Icons.access_time_rounded,
                         label: 'Terakhir Dilihat',
-                        value: DateFormat.Hms().format(snapshot.device.lastSeen),
+                        value: DateFormat.Hms().format(
+                          snapshot.device.lastSeen,
+                        ),
                       ),
                     ),
                   ],
@@ -143,7 +124,9 @@ class DevicesScreen extends ConsumerWidget {
                           Container(
                             padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF0D9488).withValues(alpha: 0.12),
+                              color: const Color(
+                                0xFF0D9488,
+                              ).withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: const Icon(
@@ -206,7 +189,9 @@ class DevicesScreen extends ConsumerWidget {
                       child: _InfoTile(
                         icon: Icons.access_time_rounded,
                         label: 'Terakhir Dilihat',
-                        value: DateFormat.Hms().format(snapshot.camera.lastSeen),
+                        value: DateFormat.Hms().format(
+                          snapshot.camera.lastSeen,
+                        ),
                       ),
                     ),
                   ],
@@ -252,10 +237,7 @@ class _InfoTile extends StatelessWidget {
             children: [
               Text(
                 label,
-                style: const TextStyle(
-                  fontSize: 11,
-                  color: Color(0xFF64748B),
-                ),
+                style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -276,5 +258,3 @@ class _InfoTile extends StatelessWidget {
     );
   }
 }
-
-

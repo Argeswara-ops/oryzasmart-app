@@ -35,7 +35,9 @@ class _AppEntryState extends State<AppEntry> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoggedIn) return const AppShell();
+    if (_isLoggedIn) {
+      return AppShell(onLogout: () => setState(() => _isLoggedIn = false));
+    }
     return LoginScreen(onLogin: () => setState(() => _isLoggedIn = true));
   }
 }

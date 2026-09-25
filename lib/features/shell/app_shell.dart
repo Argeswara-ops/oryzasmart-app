@@ -11,7 +11,9 @@ import '../settings/settings_screen.dart';
 import '../vision/vision_screen.dart';
 
 class AppShell extends ConsumerStatefulWidget {
-  const AppShell({super.key});
+  const AppShell({super.key, required this.onLogout});
+
+  final VoidCallback onLogout;
 
   @override
   ConsumerState<AppShell> createState() => _AppShellState();
@@ -19,14 +21,6 @@ class AppShell extends ConsumerStatefulWidget {
 
 class _AppShellState extends ConsumerState<AppShell> {
   int _index = 0;
-
-  static const _screens = [
-    DashboardScreen(),
-    DevicesScreen(),
-    VisionScreen(),
-    HistoryScreen(),
-    SettingsScreen(),
-  ];
 
   @override
   Widget build(BuildContext context) {
@@ -37,154 +31,58 @@ class _AppShellState extends ConsumerState<AppShell> {
     );
 
     PreferredSizeWidget buildAppBar() {
-      Widget titleWidget;
-      switch (_index) {
-        case 0:
-          titleWidget = Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryGreen.withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
-                ),
+      final titleWidget = switch (_index) {
+        0 => Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(7),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryGreen.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
                 child: const Icon(
-                  Icons.waving_hand_rounded,
-                  color: AppTheme.primaryGreen,
-                  size: 20,
-                ),
+                  Icons.face_rounded,
+                color: AppTheme.primaryGreen,
+                size: 19,
               ),
-              const SizedBox(width: 10),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'Halo, Petani Modern! 👋',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                        color: Color(0xFF0F172A),
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(width: 9),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Halo, Petani',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF0F172A),
                     ),
-                    Text(
-                      'Monitoring Pembibitan Padi',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                        color: Color(0xFF64748B),
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    'Monitoring padi',
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w500,
+                      color: Color(0xFF64748B),
                     ),
-                  ],
-                ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ),
-            ],
-          );
-          break;
-        case 1:
-          titleWidget = const Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Perangkat IoT',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF0F172A),
-                ),
-              ),
-              Text(
-                'Status Node Mikrokontroler & Kamera',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF64748B),
-                ),
-              ),
-            ],
-          );
-          break;
-        case 2:
-          titleWidget = const Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Vision AI',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF0F172A),
-                ),
-              ),
-              Text(
-                'Deteksi Hama & Penyakit Tanaman',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF64748B),
-                ),
-              ),
-            ],
-          );
-          break;
-        case 3:
-          titleWidget = const Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Riwayat Telemetri',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF0F172A),
-                ),
-              ),
-              Text(
-                'Grafik & Log Aktivitas Sensor',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF64748B),
-                ),
-              ),
-            ],
-          );
-          break;
-        case 4:
-          titleWidget = const Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Pengaturan',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: Color(0xFF0F172A),
-                ),
-              ),
-              Text(
-                'Konfigurasi Backend API & Broker',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
-                  color: Color(0xFF64748B),
-                ),
-              ),
-            ],
-          );
-          break;
-        default:
-          titleWidget = const Text('PADI APPS');
-      }
+            ),
+          ],
+        ),
+        1 => _AppBarTitle(title: 'Device', subtitle: 'Node & kamera'),
+        2 => _AppBarTitle(title: 'Vision AI', subtitle: 'Deteksi tanaman'),
+        3 => _AppBarTitle(title: 'Riwayat', subtitle: 'Grafik & log'),
+        4 => _AppBarTitle(title: 'Pengaturan', subtitle: 'Profil & aplikasi'),
+        _ => const Text('PADI APPS'),
+      };
 
       return AppBar(
         backgroundColor: Colors.white,
@@ -194,62 +92,78 @@ class _AppShellState extends ConsumerState<AppShell> {
         titleSpacing: 16,
         title: titleWidget,
         actions: [
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              IconButton(
-                style: IconButton.styleFrom(
-                  backgroundColor: const Color(0xFFF8FAFC),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: const BorderSide(color: AppTheme.cardBorder),
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                IconButton(
+                  constraints: const BoxConstraints.tightFor(
+                    width: 38,
+                    height: 38,
                   ),
-                ),
-                icon: const Icon(
-                  Icons.notifications_none_rounded,
-                  color: Color(0xFF334155),
-                ),
-                tooltip: 'Alerts',
-                onPressed: () => showAlertsBottomSheet(context),
-              ),
-              if (alertCount > 0)
-                Positioned(
-                  right: 2,
-                  top: 2,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFEF4444),
-                      shape: BoxShape.circle,
+                  padding: EdgeInsets.zero,
+                  style: IconButton.styleFrom(
+                    backgroundColor: const Color(0xFFF8FAFC),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(11),
+                      side: const BorderSide(color: AppTheme.cardBorder),
                     ),
-                    constraints: const BoxConstraints(
-                      minWidth: 16,
-                      minHeight: 16,
-                    ),
-                    child: Text(
-                      '$alertCount',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
+                  ),
+                  icon: const Icon(
+                    Icons.notifications_none_rounded,
+                    color: Color(0xFF334155),
+                    size: 21,
+                  ),
+                  tooltip: 'Notif',
+                  onPressed: () => showAlertsBottomSheet(context),
+                ),
+                if (alertCount > 0)
+                  Positioned(
+                    right: -1,
+                    top: -1,
+                    child: Container(
+                      padding: const EdgeInsets.all(3),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFEF4444),
+                        shape: BoxShape.circle,
                       ),
-                      textAlign: TextAlign.center,
+                      constraints: const BoxConstraints(
+                        minWidth: 15,
+                        minHeight: 15,
+                      ),
+                      child: Text(
+                        '$alertCount',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
                     ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
-          const SizedBox(width: 16),
         ],
       );
     }
+
+    final screens = [
+      const DashboardScreen(),
+      const DevicesScreen(),
+      const VisionScreen(),
+      const HistoryScreen(),
+      SettingsScreen(onLogout: widget.onLogout),
+    ];
 
     return Scaffold(
       appBar: buildAppBar(),
       body: SafeArea(
         child: AnimatedSwitcher(
           duration: const Duration(milliseconds: 250),
-          child: _screens[_index],
+          child: screens[_index],
         ),
       ),
       bottomNavigationBar: Container(
@@ -263,6 +177,7 @@ class _AppShellState extends ConsumerState<AppShell> {
           ],
         ),
         child: NavigationBar(
+          height: 62,
           selectedIndex: _index,
           onDestinationSelected: (value) => setState(() => _index = value),
           destinations: const [
@@ -279,7 +194,7 @@ class _AppShellState extends ConsumerState<AppShell> {
             NavigationDestination(
               icon: Icon(Icons.center_focus_weak_rounded),
               selectedIcon: Icon(Icons.center_focus_strong_rounded),
-              label: 'Vision AI',
+              label: 'Vision',
             ),
             NavigationDestination(
               icon: Icon(Icons.analytics_outlined),
@@ -289,7 +204,7 @@ class _AppShellState extends ConsumerState<AppShell> {
             NavigationDestination(
               icon: Icon(Icons.tune_outlined),
               selectedIcon: Icon(Icons.tune_rounded),
-              label: 'Pengaturan',
+              label: 'Setting',
             ),
           ],
         ),
@@ -298,3 +213,39 @@ class _AppShellState extends ConsumerState<AppShell> {
   }
 }
 
+class _AppBarTitle extends StatelessWidget {
+  const _AppBarTitle({required this.title, required this.subtitle});
+
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w800,
+            color: Color(0xFF0F172A),
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        Text(
+          subtitle,
+          style: const TextStyle(
+            fontSize: 10.5,
+            fontWeight: FontWeight.w500,
+            color: Color(0xFF64748B),
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
+    );
+  }
+}

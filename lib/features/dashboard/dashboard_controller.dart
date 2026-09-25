@@ -27,16 +27,28 @@ class FanController extends AsyncNotifier<FanState> {
   }
 
   Future<void> setStatus(String status) async {
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(
+    final previous = state.hasValue ? state.value : null;
+    final optimistic =
+        (previous ?? const FanState(status: 'OFF', mode: 'MANUAL')).copyWith(
+          status: status,
+        );
+    state = AsyncData(optimistic);
+
+    final result = await AsyncValue.guard(
       () => ref.read(nurseryRepositoryProvider).setFanStatus(status),
     );
+    state = result.hasError && previous != null ? AsyncData(previous) : result;
   }
 
   Future<void> setMode(String mode) async {
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(
+    final previous = state.hasValue ? state.value : null;
+    final optimistic = (previous ?? const FanState(status: 'OFF', mode: 'AUTO'))
+        .copyWith(mode: mode);
+    state = AsyncData(optimistic);
+
+    final result = await AsyncValue.guard(
       () => ref.read(nurseryRepositoryProvider).setFanMode(mode),
     );
+    state = result.hasError && previous != null ? AsyncData(previous) : result;
   }
 }

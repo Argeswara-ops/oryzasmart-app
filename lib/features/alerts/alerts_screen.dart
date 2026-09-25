@@ -84,16 +84,16 @@ class AlertsScreen extends ConsumerWidget {
                       children: [
                         Text(
                           'Pemberitahuan & Alert',
-                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(
                                 fontWeight: FontWeight.w800,
                                 color: const Color(0xFF0F172A),
                               ),
                         ),
                         Text(
                           '${alerts.length} Notifikasi Aktif',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: const Color(0xFF64748B),
-                              ),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: const Color(0xFF64748B)),
                         ),
                       ],
                     ),
@@ -146,10 +146,13 @@ class AlertsScreen extends ConsumerWidget {
                         Container(
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: (alert.level == 'CRITICAL'
-                                    ? Theme.of(context).colorScheme.error
-                                    : Theme.of(context).colorScheme.tertiary)
-                                .withValues(alpha: 0.12),
+                            color:
+                                (alert.level == 'CRITICAL'
+                                        ? Theme.of(context).colorScheme.error
+                                        : Theme.of(
+                                            context,
+                                          ).colorScheme.tertiary)
+                                    .withValues(alpha: 0.12),
                             shape: BoxShape.circle,
                           ),
                           child: Icon(
@@ -232,4 +235,3 @@ class AlertsScreen extends ConsumerWidget {
     );
   }
 }
-

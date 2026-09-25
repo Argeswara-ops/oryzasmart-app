@@ -20,26 +20,6 @@ class VisionScreen extends ConsumerWidget {
         return ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Feed Kamera & Analisis Realtime',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF64748B),
-                  ),
-                ),
-                const StatusChip(
-                  label: 'LIVE CAM',
-                  color: AppTheme.primaryGreen,
-                  isPulse: true,
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-
             // Camera Stream HUD Viewport Card
             SectionCard(
               child: Column(
@@ -110,7 +90,9 @@ class VisionScreen extends ConsumerWidget {
                                   Text(
                                     'PADDY NURSERY FIELD - CAM 01',
                                     style: TextStyle(
-                                      color: Colors.white.withValues(alpha: 0.3),
+                                      color: Colors.white.withValues(
+                                        alpha: 0.3,
+                                      ),
                                       fontSize: 10,
                                       letterSpacing: 2,
                                       fontWeight: FontWeight.bold,
@@ -167,7 +149,9 @@ class VisionScreen extends ConsumerWidget {
                                     width: 2,
                                   ),
                                   borderRadius: BorderRadius.circular(6),
-                                  color: const Color(0xFFEF4444).withValues(alpha: 0.1),
+                                  color: const Color(
+                                    0xFFEF4444,
+                                  ).withValues(alpha: 0.1),
                                 ),
                               ),
                             ),
@@ -243,7 +227,8 @@ class VisionScreen extends ConsumerWidget {
                         ),
                         const SizedBox(width: 8),
                         StatusChip(
-                          label: 'AKURASI ${(latest.confidence * 100).round()}%',
+                          label:
+                              'AKURASI ${(latest.confidence * 100).round()}%',
                           color: AppTheme.primaryGreen,
                         ),
                       ],
@@ -275,10 +260,11 @@ class VisionScreen extends ConsumerWidget {
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: (item.type == 'healthy'
-                                  ? AppTheme.primaryGreen
-                                  : const Color(0xFFD97706))
-                              .withValues(alpha: 0.12),
+                          color:
+                              (item.type == 'healthy'
+                                      ? AppTheme.primaryGreen
+                                      : const Color(0xFFD97706))
+                                  .withValues(alpha: 0.12),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
@@ -345,4 +331,3 @@ class VisionScreen extends ConsumerWidget {
     );
   }
 }
-

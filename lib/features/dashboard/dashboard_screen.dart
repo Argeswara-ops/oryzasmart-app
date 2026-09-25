@@ -47,7 +47,8 @@ class _DashboardContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final isHealthy = snapshot.recommendation.status != 'CRITICAL' &&
+    final isHealthy =
+        snapshot.recommendation.status != 'CRITICAL' &&
         snapshot.detection.type != 'disease';
 
     return ListView(
@@ -68,7 +69,7 @@ class _DashboardContent extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Expanded(
                     child: Row(
@@ -88,10 +89,10 @@ class _DashboardContent extends StatelessWidget {
                         const SizedBox(width: 8),
                         const Expanded(
                           child: Text(
-                            'Kondisi Pembibitan Padi',
+                            'Kondisi Padi',
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: 15,
+                              fontSize: 14.5,
                               fontWeight: FontWeight.w700,
                             ),
                             maxLines: 1,
@@ -102,10 +103,13 @@ class _DashboardContent extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 8),
-                  const StatusChip(
-                    label: 'SYSTEM ONLINE',
-                    color: Colors.white,
-                    isPulse: true,
+                  const Flexible(
+                    flex: 0,
+                    child: StatusChip(
+                      label: 'ONLINE',
+                      color: Colors.white,
+                      isPulse: true,
+                    ),
                   ),
                 ],
               ),
@@ -163,26 +167,13 @@ class _DashboardContent extends StatelessWidget {
         const SizedBox(height: 18),
 
         // Section Title: Telemetry
-        const Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Telemetri Sensor Realtime',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w800,
-                color: Color(0xFF0F172A),
-              ),
-            ),
-            Text(
-              '8 Telemetri Aktif',
-              style: TextStyle(
-                fontSize: 12,
-                color: Color(0xFF64748B),
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
+        const Text(
+          'Sensor Realtime',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+            color: Color(0xFF0F172A),
+          ),
         ),
         const SizedBox(height: 12),
         _SensorGrid(sensor: snapshot.sensor, isHealthy: isHealthy),
@@ -191,7 +182,7 @@ class _DashboardContent extends StatelessWidget {
 
         // Section Title: Controls & AI
         const Text(
-          'Kontrol & Deteksi AI',
+          'Kontrol AI',
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w800,
@@ -218,59 +209,61 @@ class _SensorGrid extends StatelessWidget {
     final items = [
       _SensorItem(
         icon: Icons.thermostat_rounded,
-        label: 'Suhu Lingkungan',
+        label: 'Suhu',
         value: '${sensor.temperature.toStringAsFixed(1)}°C',
         status: 'NORMAL',
         accentColor: AppTheme.primaryGreen,
       ),
       _SensorItem(
         icon: Icons.water_drop_rounded,
-        label: 'Kelembapan Udara',
+        label: 'Kelembapan',
         value: '${sensor.humidity.toStringAsFixed(0)}%',
-        status: 'PERLU WASPADA',
+        status: 'WASPADA',
         accentColor: const Color(0xFFD97706), // Amber
       ),
       _SensorItem(
         icon: Icons.wb_sunny_rounded,
-        label: 'Intensitas Cahaya',
+        label: 'Cahaya',
         value: '${sensor.light.toStringAsFixed(0)} Lux',
         status: 'OPTIMAL',
         accentColor: const Color(0xFF0D9488), // Teal
       ),
       _SensorItem(
         icon: Icons.grass_rounded,
-        label: 'Nitrogen (N)',
+        label: 'Nitrogen',
         value: '${sensor.nitrogen.toStringAsFixed(0)} mg/kg',
-        status: 'HARA CUKUP',
+        status: 'CUKUP',
         accentColor: AppTheme.primaryGreen,
       ),
       _SensorItem(
         icon: Icons.spa_rounded,
-        label: 'Phosphorus (P)',
+        label: 'Fosfor',
         value: '${sensor.phosphorus.toStringAsFixed(0)} mg/kg',
-        status: 'HARA CUKUP',
+        status: 'CUKUP',
         accentColor: AppTheme.primaryGreen,
       ),
       _SensorItem(
         icon: Icons.eco_rounded,
-        label: 'Potassium (K)',
+        label: 'Kalium',
         value: '${sensor.potassium.toStringAsFixed(0)} mg/kg',
-        status: 'HARA CUKUP',
+        status: 'CUKUP',
         accentColor: AppTheme.primaryGreen,
       ),
       _SensorItem(
         icon: Icons.waves_rounded,
-        label: 'Ketinggian Air',
+        label: 'Air',
         value: '${sensor.ultrasonic.toStringAsFixed(0)} cm',
-        status: 'LEVEL STABIL',
+        status: 'STABIL',
         accentColor: const Color(0xFF0284C7), // Sky Blue
       ),
       _SensorItem(
         icon: Icons.health_and_safety_rounded,
-        label: 'Status Kesehatan',
+        label: 'Kesehatan',
         value: isHealthy ? 'Sehat' : 'Tidak Sehat',
-        status: isHealthy ? 'SEHAT' : 'TIDAK SEHAT',
-        accentColor: isHealthy ? AppTheme.primaryGreen : const Color(0xFFEF4444),
+        status: isHealthy ? 'SEHAT' : 'SAKIT',
+        accentColor: isHealthy
+            ? AppTheme.primaryGreen
+            : const Color(0xFFEF4444),
       ),
     ];
 
@@ -285,7 +278,7 @@ class _SensorGrid extends StatelessWidget {
             crossAxisCount: crossAxisCount,
             crossAxisSpacing: 10,
             mainAxisSpacing: 10,
-            childAspectRatio: 1.25,
+            childAspectRatio: constraints.maxWidth > 360 ? 1.25 : 1.15,
           ),
           itemBuilder: (context, index) {
             final item = items[index];
@@ -368,10 +361,7 @@ class _LatestDetection extends StatelessWidget {
             decoration: BoxDecoration(
               color: const Color(0xFFFEF2F2),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: const Color(0xFFFCA5A5),
-                width: 1,
-              ),
+              border: Border.all(color: const Color(0xFFFCA5A5), width: 1),
             ),
             child: const Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -383,7 +373,7 @@ class _LatestDetection extends StatelessWidget {
                 ),
                 SizedBox(height: 2),
                 Text(
-                  'AI ALERT',
+                  'AI',
                   style: TextStyle(
                     fontSize: 9,
                     fontWeight: FontWeight.bold,
@@ -403,7 +393,7 @@ class _LatestDetection extends StatelessWidget {
                   children: [
                     const Expanded(
                       child: Text(
-                        'Deteksi Hama Terbaru',
+                        'Deteksi Terbaru',
                         style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
@@ -415,7 +405,7 @@ class _LatestDetection extends StatelessWidget {
                     ),
                     const SizedBox(width: 6),
                     StatusChip(
-                      label: '${(detection.confidence * 100).round()}% MATCH',
+                      label: '${(detection.confidence * 100).round()}%',
                       color: AppTheme.primaryGreen,
                     ),
                   ],
@@ -502,7 +492,7 @@ class _FanControl extends ConsumerWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
-                            'Aktuator Kipas Pentilasi',
+                            'Kipas Ventilasi',
                             style: TextStyle(
                               fontSize: 14.5,
                               fontWeight: FontWeight.w800,
@@ -611,5 +601,3 @@ class _SensorItem {
   final String status;
   final Color accentColor;
 }
-
-

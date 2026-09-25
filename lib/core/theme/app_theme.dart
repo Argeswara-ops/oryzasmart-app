@@ -56,21 +56,21 @@ class AppTheme {
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         iconTheme: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return const IconThemeData(color: primaryGreen, size: 24);
+            return const IconThemeData(color: primaryGreen, size: 21);
           }
-          return const IconThemeData(color: Color(0xFF64748B), size: 22);
+          return const IconThemeData(color: Color(0xFF64748B), size: 20);
         }),
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
             return const TextStyle(
               color: primaryGreen,
-              fontSize: 12,
+              fontSize: 10.5,
               fontWeight: FontWeight.w700,
             );
           }
           return const TextStyle(
             color: Color(0xFF64748B),
-            fontSize: 12,
+            fontSize: 10.5,
             fontWeight: FontWeight.w500,
           );
         }),
@@ -89,9 +89,7 @@ class AppTheme {
             }
             return const Color(0xFF334155);
           }),
-          side: WidgetStateProperty.all(
-            const BorderSide(color: cardBorder),
-          ),
+          side: WidgetStateProperty.all(const BorderSide(color: cardBorder)),
           shape: WidgetStateProperty.all(
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           ),
@@ -106,13 +104,9 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          textStyle: const TextStyle(
-            fontWeight: FontWeight.w700,
-            fontSize: 15,
-          ),
+          textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
         ),
       ),
     );
   }
 }
-
