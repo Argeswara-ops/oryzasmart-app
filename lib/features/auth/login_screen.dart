@@ -119,6 +119,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         children: [
                           const Text(
                             'Masuk Akun',
+                            textAlign: TextAlign.center,
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w800,

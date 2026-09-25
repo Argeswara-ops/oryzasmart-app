@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/api/api_providers.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/login_screen.dart';
+import 'features/onboarding/onboarding_screen.dart';
 import 'features/shell/app_shell.dart';
 import 'shared/repositories/nursery_repository.dart';
 
@@ -37,6 +38,7 @@ class AppEntry extends ConsumerStatefulWidget {
 
 class _AppEntryState extends ConsumerState<AppEntry> {
   AuthUser? _user;
+  bool _hasSeenOnboarding = false;
 
   @override
   Widget build(BuildContext context) {
@@ -48,6 +50,11 @@ class _AppEntryState extends ConsumerState<AppEntry> {
           await ref.read(nurseryRepositoryProvider).logout();
           if (mounted) setState(() => _user = null);
         },
+      );
+    }
+    if (!_hasSeenOnboarding) {
+      return OnboardingScreen(
+        onFinished: () => setState(() => _hasSeenOnboarding = true),
       );
     }
     return LoginScreen(
