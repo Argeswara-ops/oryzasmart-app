@@ -109,7 +109,7 @@ class _AppShellState extends ConsumerState<AppShell> {
     }
 
     final screens = [
-      const DashboardScreen(),
+      DashboardScreen(user: widget.user),
       const DevicesScreen(),
       const VisionScreen(),
       const HistoryScreen(),

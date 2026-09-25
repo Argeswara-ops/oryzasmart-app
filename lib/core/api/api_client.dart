@@ -1,20 +1,31 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
 import '../config/app_config.dart';
 
 class ApiClient {
-  ApiClient()
-    : _dio = Dio(
-        BaseOptions(
-          baseUrl: AppConfig.apiBaseUrl,
-          connectTimeout: const Duration(seconds: 3),
-          receiveTimeout: const Duration(seconds: 3),
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-          },
+  ApiClient() : _dio = Dio(_baseOptions) {
+    if (kDebugMode) {
+      _dio.interceptors.add(
+        LogInterceptor(
+          requestBody: true,
+          responseBody: true,
+          error: true,
+          logPrint: (object) => debugPrint(object.toString()),
         ),
       );
+    }
+  }
+
+  static final _baseOptions = BaseOptions(
+    baseUrl: AppConfig.apiBaseUrl,
+    connectTimeout: const Duration(seconds: 8),
+    receiveTimeout: const Duration(seconds: 8),
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+    },
+  );
 
   final Dio _dio;
   String? _token;

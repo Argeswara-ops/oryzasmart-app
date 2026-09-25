@@ -16,6 +16,11 @@ class StatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final shouldPulse =
+        isPulse ||
+        label.toUpperCase() == 'LIVE' ||
+        label.toUpperCase() == 'ONLINE';
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 5.5, vertical: 2.5),
       constraints: const BoxConstraints(maxWidth: 96, minHeight: 20),
@@ -27,22 +32,8 @@ class StatusChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (isPulse) ...[
-            Container(
-              width: 5,
-              height: 5,
-              decoration: BoxDecoration(
-                color: color,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: color.withValues(alpha: 0.6),
-                    blurRadius: 5,
-                    spreadRadius: 1,
-                  ),
-                ],
-              ),
-            ),
+          if (shouldPulse) ...[
+            _PulseDot(color: color),
             const SizedBox(width: 3),
           ] else if (icon != null) ...[
             Icon(icon, size: 10, color: color),
@@ -65,6 +56,65 @@ class StatusChip extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _PulseDot extends StatefulWidget {
+  const _PulseDot({required this.color});
+
+  final Color color;
+
+  @override
+  State<_PulseDot> createState() => _PulseDotState();
+}
+
+class _PulseDotState extends State<_PulseDot>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _opacity;
+  late final Animation<double> _scale;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat(reverse: true);
+    final curve = CurvedAnimation(parent: _controller, curve: Curves.easeInOut);
+    _opacity = Tween<double>(begin: 0.35, end: 1).animate(curve);
+    _scale = Tween<double>(begin: 0.82, end: 1.18).animate(curve);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _opacity,
+      child: ScaleTransition(
+        scale: _scale,
+        child: Container(
+          width: 5,
+          height: 5,
+          decoration: BoxDecoration(
+            color: widget.color,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: widget.color.withValues(alpha: 0.6),
+                blurRadius: 5,
+                spreadRadius: 1,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

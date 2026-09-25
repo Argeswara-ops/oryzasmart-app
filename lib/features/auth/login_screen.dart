@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../shared/repositories/nursery_repository.dart';
 import '../../shared/widgets/section_card.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -41,7 +42,10 @@ class _LoginScreenState extends State<LoginScreen> {
         _emailController.text.trim(),
         _passwordController.text,
       );
-    } catch (error) {
+    } on LoginException catch (error) {
+      if (!mounted) return;
+      setState(() => _errorMessage = error.message);
+    } catch (_) {
       if (!mounted) return;
       setState(() => _errorMessage = 'Login gagal. Periksa backend dan akun.');
     } finally {

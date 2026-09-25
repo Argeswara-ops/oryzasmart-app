@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 
 import '../../core/api/api_client.dart';
+import '../../core/config/app_config.dart';
 import '../models/nursery_models.dart';
 
 class NurseryRepository {
@@ -13,21 +14,25 @@ class NurseryRepository {
     required String email,
     required String password,
   }) async {
-    final response = await _client.dio.post<Map<String, dynamic>>(
-      '/login',
-      data: {'email': email, 'password': password},
-    );
-    final data = _client.dataEnvelope(response);
-    final token = '${data['token'] ?? ''}';
-    if (token.isEmpty) {
-      throw StateError('Token login tidak ditemukan dari backend.');
-    }
+    try {
+      final response = await _client.dio.post<Map<String, dynamic>>(
+        '/login',
+        data: {'email': email, 'password': password},
+      );
+      final data = _client.dataEnvelope(response);
+      final token = '${data['token'] ?? ''}';
+      if (token.isEmpty) {
+        throw const LoginException('Token login tidak ditemukan dari backend.');
+      }
 
-    _client.setToken(token);
-    final user = data['user'] is Map<String, dynamic>
-        ? AuthUser.fromJson(data['user'] as Map<String, dynamic>)
-        : AuthUser.fallback(email);
-    return user;
+      _client.setToken(token);
+      final user = data['user'] is Map<String, dynamic>
+          ? AuthUser.fromJson(data['user'] as Map<String, dynamic>)
+          : AuthUser.fallback(email);
+      return user;
+    } on DioException catch (error) {
+      throw LoginException.fromDio(error);
+    }
   }
 
   Future<void> logout() async {
@@ -466,6 +471,46 @@ class NurseryRepository {
       ),
     ];
   }
+}
+
+class LoginException implements Exception {
+  const LoginException(this.message);
+
+  final String message;
+
+  factory LoginException.fromDio(DioException error) {
+    final statusCode = error.response?.statusCode;
+    final message = _messageFromResponse(error.response?.data);
+    if (statusCode == 401 || statusCode == 422) {
+      return LoginException(message ?? 'Email atau password tidak sesuai.');
+    }
+    if (statusCode != null) {
+      return LoginException(
+        message ?? 'Backend menolak login. Kode HTTP $statusCode.',
+      );
+    }
+    if (error.type == DioExceptionType.connectionTimeout ||
+        error.type == DioExceptionType.receiveTimeout ||
+        error.type == DioExceptionType.sendTimeout) {
+      return LoginException(
+        'Backend tidak merespons di ${AppConfig.apiBaseUrl}. Pastikan HP satu Wi-Fi dan firewall Windows mengizinkan port 8000.',
+      );
+    }
+    return LoginException(
+      'Backend tidak terjangkau dari perangkat di ${AppConfig.apiBaseUrl}. Periksa jaringan, IP laptop, dan firewall.',
+    );
+  }
+
+  @override
+  String toString() => message;
+}
+
+String? _messageFromResponse(dynamic data) {
+  if (data is Map<String, dynamic>) {
+    final message = data['message'];
+    if (message is String && message.trim().isNotEmpty) return message;
+  }
+  return null;
 }
 
 class AuthUser {

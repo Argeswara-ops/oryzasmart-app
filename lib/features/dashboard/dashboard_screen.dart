@@ -4,12 +4,15 @@ import 'package:intl/intl.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../shared/models/nursery_models.dart';
+import '../../shared/repositories/nursery_repository.dart';
 import '../../shared/widgets/section_card.dart';
 import '../../shared/widgets/status_chip.dart';
 import 'dashboard_controller.dart';
 
 class DashboardScreen extends ConsumerWidget {
-  const DashboardScreen({super.key});
+  const DashboardScreen({super.key, required this.user});
+
+  final AuthUser user;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -19,7 +22,7 @@ class DashboardScreen extends ConsumerWidget {
       color: AppTheme.primaryGreen,
       onRefresh: () => ref.refresh(dashboardProvider.future),
       child: dashboard.when(
-        data: (snapshot) => _DashboardContent(snapshot: snapshot),
+        data: (snapshot) => _DashboardContent(snapshot: snapshot, user: user),
         loading: () => const _DashboardSkeleton(),
         error: (error, stackTrace) => ListView(
           padding: const EdgeInsets.all(20),
@@ -38,9 +41,10 @@ class DashboardScreen extends ConsumerWidget {
 }
 
 class _DashboardContent extends ConsumerWidget {
-  const _DashboardContent({required this.snapshot});
+  const _DashboardContent({required this.snapshot, required this.user});
 
   final DashboardSnapshot snapshot;
+  final AuthUser user;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -49,18 +53,30 @@ class _DashboardContent extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
       children: [
-        _GreetingCard(snapshot: snapshot),
-        const SizedBox(height: 12),
         _ConditionBanner(snapshot: snapshot, condition: condition),
+        const SizedBox(height: 12),
+        _GreetingCard(snapshot: snapshot, user: user),
         const SizedBox(height: 12),
         _DashboardSection(
           title: 'Sensor Realtime',
           subtitle: 'Data terakhir ESP32',
           trailing: IconButton(
-            constraints: const BoxConstraints.tightFor(width: 34, height: 34),
+            constraints: const BoxConstraints.tightFor(width: 40, height: 40),
             padding: EdgeInsets.zero,
+            style: IconButton.styleFrom(
+              backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.1),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+                side: BorderSide(
+                  color: AppTheme.primaryGreen.withValues(alpha: 0.2),
+                ),
+              ),
+            ),
             tooltip: 'Refresh',
-            onPressed: () => ref.invalidate(dashboardProvider),
+            onPressed: () async {
+              final refreshed = ref.refresh(dashboardProvider.future);
+              await refreshed;
+            },
             icon: const Icon(
               Icons.refresh_rounded,
               color: AppTheme.primaryGreen,
@@ -87,9 +103,10 @@ class _DashboardContent extends ConsumerWidget {
 }
 
 class _GreetingCard extends StatelessWidget {
-  const _GreetingCard({required this.snapshot});
+  const _GreetingCard({required this.snapshot, required this.user});
 
   final DashboardSnapshot snapshot;
+  final AuthUser user;
 
   @override
   Widget build(BuildContext context) {
@@ -102,6 +119,7 @@ class _GreetingCard extends StatelessWidget {
         ? 'Selamat sore'
         : 'Selamat malam';
     final icon = hour < 18 ? Icons.wb_sunny_rounded : Icons.nights_stay_rounded;
+    final firstName = _firstName(user.name);
 
     return SectionCard(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -121,7 +139,7 @@ class _GreetingCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  '$greeting, Petani',
+                  '$greeting, @$firstName',
                   style: const TextStyle(
                     color: AppTheme.textStrong,
                     fontSize: 15,
@@ -857,6 +875,8 @@ class _DarkStatusPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isLive = label == 'ONLINE' || label == 'LIVE' || label == 'ON';
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
@@ -864,14 +884,81 @@ class _DarkStatusPill extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
         border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
       ),
-      child: Text(
-        label,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 9,
-          fontWeight: FontWeight.w900,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (isLive) ...[
+            const _BlinkDot(color: Colors.white),
+            const SizedBox(width: 4),
+          ],
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 9,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BlinkDot extends StatefulWidget {
+  const _BlinkDot({required this.color});
+
+  final Color color;
+
+  @override
+  State<_BlinkDot> createState() => _BlinkDotState();
+}
+
+class _BlinkDotState extends State<_BlinkDot>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _opacity;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..repeat(reverse: true);
+    _opacity = Tween<double>(
+      begin: 0.35,
+      end: 1,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _opacity,
+      child: Container(
+        width: 5,
+        height: 5,
+        decoration: BoxDecoration(
+          color: widget.color,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: widget.color.withValues(alpha: 0.58),
+              blurRadius: 5,
+              spreadRadius: 1,
+            ),
+          ],
         ),
       ),
     );
@@ -935,4 +1022,10 @@ class _SensorItem {
   final String value;
   final String status;
   final Color accentColor;
+}
+
+String _firstName(String name) {
+  final parts = name.trim().split(RegExp(r'\s+'));
+  final first = parts.where((part) => part.isNotEmpty).firstOrNull;
+  return first ?? 'Operator';
 }

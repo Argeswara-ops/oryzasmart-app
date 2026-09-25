@@ -80,9 +80,11 @@ class Detection {
   final DateTime detectedAt;
 
   factory Detection.fromJson(Map<String, dynamic> json) {
+    final camera = json['camera'];
     return Detection(
-      cameraId:
-          '${json['camera_id'] ?? json['camera_code'] ?? json['camera'] ?? 'CAM-01'}',
+      cameraId: camera is Map<String, dynamic>
+          ? '${camera['camera_code'] ?? camera['code'] ?? 'CAM-01'}'
+          : '${json['camera_code'] ?? json['camera'] ?? json['camera_id'] ?? 'CAM-01'}',
       type: _normalizeType(json['detection_type'] ?? json['type']),
       className: '${json['class_name'] ?? json['class'] ?? 'unknown'}',
       confidence: _toDouble(json['confidence']),

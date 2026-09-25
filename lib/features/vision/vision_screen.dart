@@ -25,7 +25,7 @@ class _VisionScreenState extends ConsumerState<VisionScreen> {
     return detections.when(
       data: (items) {
         if (items.isEmpty) {
-          return const _EmptyVision();
+          return _EmptyVision(onRefresh: () => ref.refresh(detectionsProvider));
         }
 
         final filtered = _filter == 'all'
@@ -433,11 +433,36 @@ class _CameraBadge extends StatelessWidget {
 }
 
 class _EmptyVision extends StatelessWidget {
-  const _EmptyVision();
+  const _EmptyVision({required this.onRefresh});
+
+  final VoidCallback onRefresh;
 
   @override
   Widget build(BuildContext context) {
-    return const Center(child: Text('Belum ada data deteksi vision'));
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Belum ada data deteksi vision',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AppTheme.textMuted,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: onRefresh,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Refresh'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
