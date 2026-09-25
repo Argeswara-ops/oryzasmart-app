@@ -32,61 +32,11 @@ class _AppShellState extends ConsumerState<AppShell> {
 
     PreferredSizeWidget buildAppBar() {
       final titleWidget = switch (_index) {
-        0 => Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(7),
-              decoration: BoxDecoration(
-                color: AppTheme.primaryGreen.withValues(alpha: 0.12),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.grass_rounded,
-                color: AppTheme.primaryGreen,
-                size: 19,
-              ),
-            ),
-            const SizedBox(width: 9),
-            const Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        'Halo, Petani',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF0F172A),
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      SizedBox(width: 4),
-                      Text('👋', style: TextStyle(fontSize: 13)),
-                    ],
-                  ),
-                  Text(
-                    'Cek kondisi nursery hari ini',
-                    style: TextStyle(
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w500,
-                      color: Color(0xFF64748B),
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+        0 => const _BrandTitle(),
         1 => const _AppBarTitle(title: 'Device'),
         2 => const _AppBarTitle(title: 'Vision'),
         3 => const _AppBarTitle(title: 'Riwayat'),
-        4 => const _AppBarTitle(title: 'Setting'),
+        4 => const _AppBarTitle(title: 'Settings'),
         _ => const Text('ORYZA SMART'),
       };
 
@@ -183,14 +133,14 @@ class _AppShellState extends ConsumerState<AppShell> {
           ],
         ),
         child: NavigationBar(
-          height: 62,
+          height: 58,
           selectedIndex: _index,
           onDestinationSelected: (value) => setState(() => _index = value),
           destinations: const [
             NavigationDestination(
               icon: Icon(Icons.grid_view_outlined),
               selectedIcon: Icon(Icons.grid_view_rounded),
-              label: 'Dashboard',
+              label: 'Dasbor',
             ),
             NavigationDestination(
               icon: Icon(Icons.sensors_outlined),
@@ -210,11 +160,48 @@ class _AppShellState extends ConsumerState<AppShell> {
             NavigationDestination(
               icon: Icon(Icons.tune_outlined),
               selectedIcon: Icon(Icons.tune_rounded),
-              label: 'Setting',
+              label: 'Settings',
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _BrandTitle extends StatelessWidget {
+  const _BrandTitle();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(7),
+          decoration: BoxDecoration(
+            color: AppTheme.primaryGreen.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: const Icon(
+            Icons.grass_rounded,
+            color: AppTheme.primaryGreen,
+            size: 20,
+          ),
+        ),
+        const SizedBox(width: 9),
+        const Expanded(
+          child: Text(
+            'ORYZA SMART',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+              color: AppTheme.textStrong,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
     );
   }
 }

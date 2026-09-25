@@ -55,7 +55,7 @@ class _DashboardContent extends ConsumerWidget {
         const SizedBox(height: 12),
         _DashboardSection(
           title: 'Sensor Realtime',
-          subtitle: 'Pembacaan terakhir dari node ESP32',
+          subtitle: 'Data terakhir ESP32',
           trailing: IconButton(
             constraints: const BoxConstraints.tightFor(width: 34, height: 34),
             padding: EdgeInsets.zero,
@@ -71,8 +71,8 @@ class _DashboardContent extends ConsumerWidget {
         ),
         const SizedBox(height: 12),
         _DashboardSection(
-          title: 'Kontrol & Bukti AI',
-          subtitle: 'Aksi perangkat dan deteksi kamera terbaru',
+          title: 'Kontrol AI',
+          subtitle: 'Kipas dan deteksi terbaru',
           child: Column(
             children: [
               _FanControl(fan: snapshot.fan),
@@ -104,18 +104,18 @@ class _GreetingCard extends StatelessWidget {
     final icon = hour < 18 ? Icons.wb_sunny_rounded : Icons.nights_stay_rounded;
 
     return SectionCard(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(9),
+            padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: AppTheme.primaryGreen.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, color: AppTheme.primaryGreen, size: 22),
+            child: Icon(icon, color: AppTheme.primaryGreen, size: 20),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -124,7 +124,7 @@ class _GreetingCard extends StatelessWidget {
                   '$greeting, Petani',
                   style: const TextStyle(
                     color: AppTheme.textStrong,
-                    fontSize: 16,
+                    fontSize: 15,
                     fontWeight: FontWeight.w900,
                   ),
                   maxLines: 1,
@@ -134,7 +134,7 @@ class _GreetingCard extends StatelessWidget {
                   'Nursery ${snapshot.device.code} dipantau secara realtime',
                   style: const TextStyle(
                     color: AppTheme.textMuted,
-                    fontSize: 12,
+                    fontSize: 11.5,
                     fontWeight: FontWeight.w600,
                   ),
                   maxLines: 1,
@@ -166,7 +166,7 @@ class _ConditionBanner extends StatelessWidget {
         end: Alignment.bottomRight,
       ),
       borderColor: condition.borderColor,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -206,30 +206,24 @@ class _ConditionBanner extends StatelessWidget {
                   ],
                 ),
               ),
-              _DarkStatusPill(label: snapshot.device.status.toUpperCase()),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 86),
+                child: _DarkStatusPill(
+                  label: snapshot.device.status.toUpperCase(),
+                ),
+              ),
             ],
           ),
-          const SizedBox(height: 14),
-          Text(
-            snapshot.recommendation.cause,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 14.5,
-              fontWeight: FontWeight.w800,
-            ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
+          const SizedBox(height: 10),
+          _BannerInfoLine(
+            icon: Icons.info_rounded,
+            text: snapshot.recommendation.cause,
+            isStrong: true,
           ),
-          const SizedBox(height: 5),
-          Text(
-            snapshot.recommendation.message,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.9),
-              fontSize: 12.5,
-              height: 1.3,
-            ),
-            maxLines: 3,
-            overflow: TextOverflow.ellipsis,
+          const SizedBox(height: 6),
+          _BannerInfoLine(
+            icon: Icons.task_alt_rounded,
+            text: snapshot.recommendation.message,
           ),
           const SizedBox(height: 12),
           Row(
@@ -336,7 +330,7 @@ class _SensorGrid extends StatelessWidget {
             crossAxisCount: crossAxisCount,
             crossAxisSpacing: 8,
             mainAxisSpacing: 8,
-            childAspectRatio: constraints.maxWidth > 620 ? 1.7 : 1.48,
+            childAspectRatio: constraints.maxWidth > 620 ? 1.8 : 1.42,
           ),
           itemBuilder: (context, index) => _SensorCard(item: items[index]),
         );
@@ -812,6 +806,50 @@ class _BannerMetric extends StatelessWidget {
   }
 }
 
+class _BannerInfoLine extends StatelessWidget {
+  const _BannerInfoLine({
+    required this.icon,
+    required this.text,
+    this.isStrong = false,
+  });
+
+  final IconData icon;
+  final String text;
+  final bool isStrong;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 20,
+          height: 20,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.14),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Icon(icon, size: 13, color: Colors.white),
+        ),
+        const SizedBox(width: 7),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: isStrong ? 0.98 : 0.9),
+              fontSize: isStrong ? 12.5 : 11.5,
+              height: 1.25,
+              fontWeight: isStrong ? FontWeight.w900 : FontWeight.w700,
+            ),
+            maxLines: isStrong ? 2 : 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _DarkStatusPill extends StatelessWidget {
   const _DarkStatusPill({required this.label});
 
@@ -828,9 +866,11 @@ class _DarkStatusPill extends StatelessWidget {
       ),
       child: Text(
         label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
         style: const TextStyle(
           color: Colors.white,
-          fontSize: 10,
+          fontSize: 9,
           fontWeight: FontWeight.w900,
         ),
       ),

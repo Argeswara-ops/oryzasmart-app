@@ -63,22 +63,24 @@ class AppTheme {
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         iconTheme: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return const IconThemeData(color: primaryGreen, size: 21);
+            return const IconThemeData(color: primaryGreen, size: 19);
           }
-          return const IconThemeData(color: textMuted, size: 20);
+          return const IconThemeData(color: textMuted, size: 18);
         }),
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
             return const TextStyle(
               color: primaryGreen,
-              fontSize: 10.5,
-              fontWeight: FontWeight.w700,
+              fontSize: 9.5,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0,
             );
           }
           return const TextStyle(
             color: Color(0xFF64748B),
-            fontSize: 10.5,
-            fontWeight: FontWeight.w500,
+            fontSize: 9.5,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0,
           );
         }),
       ),

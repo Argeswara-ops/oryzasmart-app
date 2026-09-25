@@ -13,6 +13,6 @@ void main() {
     await tester.tap(find.text('Masuk'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Halo, Petani'), findsOneWidget);
+    expect(find.text('ORYZA SMART'), findsOneWidget);
   });
 }

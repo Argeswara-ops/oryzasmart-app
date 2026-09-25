@@ -62,88 +62,71 @@ class AlertsScreen extends ConsumerWidget {
         return ListView(
           padding: const EdgeInsets.fromLTRB(14, 6, 14, 20),
           children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryGreen.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(
-                    Icons.notifications_active_rounded,
-                    color: AppTheme.primaryGreen,
-                    size: 20,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+            SectionCard(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                children: [
+                  Row(
                     children: [
-                      Text(
-                        'Alert',
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(
-                              fontWeight: FontWeight.w900,
-                              color: AppTheme.textStrong,
-                            ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Text(
-                        '${alerts.length} aktif',
-                        style: const TextStyle(
-                          color: AppTheme.textMuted,
-                          fontSize: 11,
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryGreen.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                        child: const Icon(
+                          Icons.notifications_active_rounded,
+                          color: AppTheme.primaryGreen,
+                          size: 20,
+                        ),
                       ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Alert',
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w900,
+                                    color: AppTheme.textStrong,
+                                  ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(
+                              '${alerts.length} aktif',
+                              style: const TextStyle(
+                                color: AppTheme.textMuted,
+                                fontSize: 11,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (isEmbedded)
+                        IconButton(
+                          constraints: const BoxConstraints.tightFor(
+                            width: 36,
+                            height: 36,
+                          ),
+                          padding: EdgeInsets.zero,
+                          onPressed: () => Navigator.pop(context),
+                          icon: const Icon(Icons.close_rounded, size: 20),
+                        ),
                     ],
                   ),
-                ),
-                if (isEmbedded)
-                  IconButton(
-                    constraints: const BoxConstraints.tightFor(
-                      width: 36,
-                      height: 36,
-                    ),
-                    padding: EdgeInsets.zero,
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.close_rounded, size: 20),
-                  ),
-              ],
+                  const SizedBox(height: 12),
+                  if (alerts.isEmpty)
+                    const _EmptyAlertState()
+                  else
+                    for (final alert in alerts) _AlertCard(alert: alert),
+                ],
+              ),
             ),
-            const SizedBox(height: 12),
-            if (alerts.isEmpty)
-              SectionCard(
-                padding: const EdgeInsets.symmetric(vertical: 24),
-                child: Column(
-                  children: [
-                    Icon(
-                      Icons.check_circle_outline_rounded,
-                      size: 42,
-                      color: AppTheme.primaryGreen.withValues(alpha: 0.5),
-                    ),
-                    const SizedBox(height: 10),
-                    const Text(
-                      'Aman',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 15,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    const Text(
-                      'Tidak ada alert aktif',
-                      style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
-                    ),
-                  ],
-                ),
-              )
-            else
-              for (final alert in alerts) _AlertCard(alert: alert),
           ],
         );
       },
@@ -175,8 +158,13 @@ class _AlertCard extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: SectionCard(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -253,6 +241,36 @@ class _AlertCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _EmptyAlertState extends StatelessWidget {
+  const _EmptyAlertState();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 18),
+      child: Column(
+        children: [
+          Icon(
+            Icons.check_circle_outline_rounded,
+            size: 42,
+            color: AppTheme.primaryGreen.withValues(alpha: 0.5),
+          ),
+          const SizedBox(height: 10),
+          const Text(
+            'Aman',
+            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+          ),
+          const SizedBox(height: 3),
+          const Text(
+            'Tidak ada alert aktif',
+            style: TextStyle(color: AppTheme.textMuted, fontSize: 12),
+          ),
+        ],
       ),
     );
   }

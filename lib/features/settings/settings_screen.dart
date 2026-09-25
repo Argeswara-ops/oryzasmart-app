@@ -14,72 +14,19 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  String _name = 'Petani Padi';
-  String _email = 'petani@oryza.smart';
+  final String _name = 'Petani Padi';
+  final String _email = 'petani@oryza.smart';
   bool _criticalNotif = true;
   bool _dailySummary = true;
   double _temperatureLimit = 32;
   double _humidityLimit = 80;
-
-  Future<void> _editProfile() async {
-    final nameController = TextEditingController(text: _name);
-    final emailController = TextEditingController(text: _email);
-
-    final result = await showDialog<({String name, String email})>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Profil'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(labelText: 'Nama'),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: emailController,
-              decoration: const InputDecoration(labelText: 'Email'),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Batal'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, (
-              name: nameController.text.trim(),
-              email: emailController.text.trim(),
-            )),
-            child: const Text('Simpan'),
-          ),
-        ],
-      ),
-    );
-
-    nameController.dispose();
-    emailController.dispose();
-
-    if (result == null) return;
-    setState(() {
-      _name = result.name.isEmpty ? _name : result.name;
-      _email = result.email.isEmpty ? _email : result.email;
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       children: [
-        _ProfileCard(
-          name: _name,
-          email: _email,
-          onEdit: _editProfile,
-          onLogout: widget.onLogout,
-        ),
+        _ProfileCard(name: _name, email: _email, onLogout: widget.onLogout),
         const SizedBox(height: 12),
         SectionCard(
           child: Column(
@@ -178,13 +125,11 @@ class _ProfileCard extends StatelessWidget {
   const _ProfileCard({
     required this.name,
     required this.email,
-    required this.onEdit,
     required this.onLogout,
   });
 
   final String name;
   final String email;
-  final VoidCallback onEdit;
   final VoidCallback onLogout;
 
   @override
@@ -192,13 +137,20 @@ class _ProfileCard extends StatelessWidget {
     return SectionCard(
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 26,
-            backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.12),
+          Container(
+            width: 54,
+            height: 54,
+            decoration: BoxDecoration(
+              color: AppTheme.primaryGreen.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: AppTheme.primaryGreen.withValues(alpha: 0.2),
+              ),
+            ),
             child: const Icon(
-              Icons.grass_rounded,
+              Icons.person_rounded,
               color: AppTheme.primaryGreen,
-              size: 28,
+              size: 30,
             ),
           ),
           const SizedBox(width: 12),
@@ -228,12 +180,6 @@ class _ProfileCard extends StatelessWidget {
                 ),
               ],
             ),
-          ),
-          IconButton(
-            tooltip: 'Edit',
-            onPressed: onEdit,
-            icon: const Icon(Icons.edit_rounded),
-            color: AppTheme.primaryGreen,
           ),
           IconButton(
             tooltip: 'Logout',

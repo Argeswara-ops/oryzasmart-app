@@ -96,81 +96,164 @@ class _SensorHistory extends StatelessWidget {
         const SizedBox(height: 12),
         _StatsGrid(stats: stats, unit: spec.unit),
         const SizedBox(height: 12),
-        SectionCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'Grafik ${spec.label}',
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w900,
-                        color: AppTheme.textStrong,
-                      ),
-                    ),
-                  ),
-                  _ChartLegend(label: spec.unit, color: spec.color),
-                ],
-              ),
-              const SizedBox(height: 18),
-              SizedBox(
-                height: 220,
-                child: LineChart(
-                  LineChartData(
-                    minY: stats.minY,
-                    maxY: stats.maxY,
-                    gridData: FlGridData(
-                      show: true,
-                      drawVerticalLine: false,
-                      getDrawingHorizontalLine: (value) => const FlLine(
-                        color: Color(0xFFF1F5F9),
-                        strokeWidth: 1,
-                      ),
-                    ),
-                    borderData: FlBorderData(show: false),
-                    titlesData: const FlTitlesData(
-                      rightTitles: AxisTitles(
-                        sideTitles: SideTitles(showTitles: false),
-                      ),
-                      topTitles: AxisTitles(
-                        sideTitles: SideTitles(showTitles: false),
-                      ),
-                      leftTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          reservedSize: 34,
-                        ),
-                      ),
-                    ),
-                    lineBarsData: [
-                      LineChartBarData(
-                        spots: [
-                          for (var i = 0; i < values.length; i++)
-                            FlSpot(i.toDouble(), values[i]),
-                        ],
-                        isCurved: true,
-                        color: spec.color,
-                        barWidth: 3.5,
-                        isStrokeCapRound: true,
-                        dotData: const FlDotData(show: true),
-                        belowBarData: BarAreaData(
-                          show: true,
-                          color: spec.color.withValues(alpha: 0.1),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
+        _ChartCard(
+          title: 'Grafik ${spec.label}',
+          legends: [_ChartLegend(label: spec.unit, color: spec.color)],
+          minY: stats.minY,
+          maxY: stats.maxY,
+          lines: [_ChartLine(values: values, color: spec.color, fill: true)],
         ),
+        const SizedBox(height: 12),
+        _NpkChart(items: items),
       ],
     );
   }
+}
+
+class _NpkChart extends StatelessWidget {
+  const _NpkChart({required this.items});
+
+  final List<SensorReading> items;
+
+  @override
+  Widget build(BuildContext context) {
+    final nitrogen = [for (final item in items) item.nitrogen];
+    final phosphorus = [for (final item in items) item.phosphorus];
+    final potassium = [for (final item in items) item.potassium];
+    final allValues = [...nitrogen, ...phosphorus, ...potassium];
+    final stats = _Stats.from(allValues);
+
+    return _ChartCard(
+      title: 'Grafik NPK',
+      legends: const [
+        _ChartLegend(label: 'N', color: AppTheme.primaryGreen),
+        _ChartLegend(label: 'P', color: AppTheme.teal),
+        _ChartLegend(label: 'K', color: AppTheme.warning),
+      ],
+      minY: stats.minY,
+      maxY: stats.maxY,
+      lines: [
+        _ChartLine(values: nitrogen, color: AppTheme.primaryGreen),
+        _ChartLine(values: phosphorus, color: AppTheme.teal),
+        _ChartLine(values: potassium, color: AppTheme.warning),
+      ],
+    );
+  }
+}
+
+class _ChartCard extends StatelessWidget {
+  const _ChartCard({
+    required this.title,
+    required this.legends,
+    required this.minY,
+    required this.maxY,
+    required this.lines,
+  });
+
+  final String title;
+  final List<Widget> legends;
+  final double minY;
+  final double maxY;
+  final List<_ChartLine> lines;
+
+  @override
+  Widget build(BuildContext context) {
+    return SectionCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                    color: AppTheme.textStrong,
+                  ),
+                ),
+              ),
+              Wrap(spacing: 8, children: legends),
+            ],
+          ),
+          const SizedBox(height: 18),
+          SizedBox(
+            height: 220,
+            child: LineChart(
+              LineChartData(
+                minY: minY,
+                maxY: maxY,
+                gridData: FlGridData(
+                  show: true,
+                  drawVerticalLine: false,
+                  getDrawingHorizontalLine: (value) =>
+                      const FlLine(color: Color(0xFFF1F5F9), strokeWidth: 1),
+                ),
+                borderData: FlBorderData(show: false),
+                titlesData: FlTitlesData(
+                  rightTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  topTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  bottomTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 34,
+                      interval: ((maxY - minY) / 4).clamp(1, 999).toDouble(),
+                      getTitlesWidget: (value, meta) => Text(
+                        value.round().toString(),
+                        style: const TextStyle(
+                          color: AppTheme.textMuted,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                lineBarsData: [
+                  for (final line in lines)
+                    LineChartBarData(
+                      spots: [
+                        for (var i = 0; i < line.values.length; i++)
+                          FlSpot(i.toDouble(), line.values[i]),
+                      ],
+                      isCurved: true,
+                      color: line.color,
+                      barWidth: 3,
+                      isStrokeCapRound: true,
+                      dotData: const FlDotData(show: false),
+                      belowBarData: BarAreaData(
+                        show: line.fill,
+                        color: line.color.withValues(alpha: 0.1),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ChartLine {
+  const _ChartLine({
+    required this.values,
+    required this.color,
+    this.fill = false,
+  });
+
+  final List<double> values;
+  final Color color;
+  final bool fill;
 }
 
 class _VisionHistory extends StatelessWidget {

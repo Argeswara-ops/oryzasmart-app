@@ -233,14 +233,17 @@ class _DeviceCard extends StatelessWidget {
   }
 }
 
-class _FanDeviceCard extends StatelessWidget {
+class _FanDeviceCard extends ConsumerWidget {
   const _FanDeviceCard({required this.fan});
 
   final FanState fan;
 
   @override
-  Widget build(BuildContext context) {
-    final isOn = fan.status == 'ON';
+  Widget build(BuildContext context, WidgetRef ref) {
+    final fanState = ref
+        .watch(fanControllerProvider)
+        .maybeWhen(data: (value) => value, orElse: () => fan);
+    final isOn = fanState.status == 'ON';
     final color = isOn ? AppTheme.primaryGreen : AppTheme.textMuted;
 
     return SectionCard(
@@ -268,7 +271,7 @@ class _FanDeviceCard extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  'Mode ${fan.mode}',
+                  'Mode ${fanState.mode}',
                   style: const TextStyle(
                     fontSize: 12,
                     color: AppTheme.textMuted,
@@ -278,7 +281,15 @@ class _FanDeviceCard extends StatelessWidget {
               ],
             ),
           ),
-          StatusChip(label: fan.status, color: color),
+          Switch(
+            value: isOn,
+            activeThumbColor: AppTheme.primaryGreen,
+            onChanged: (value) {
+              ref
+                  .read(fanControllerProvider.notifier)
+                  .setStatus(value ? 'ON' : 'OFF');
+            },
+          ),
         ],
       ),
     );

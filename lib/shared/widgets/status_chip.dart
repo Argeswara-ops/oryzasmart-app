@@ -17,8 +17,8 @@ class StatusChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5),
-      constraints: const BoxConstraints(maxWidth: 112),
+      padding: const EdgeInsets.symmetric(horizontal: 5.5, vertical: 2.5),
+      constraints: const BoxConstraints(maxWidth: 96, minHeight: 20),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(99),
@@ -29,8 +29,8 @@ class StatusChip extends StatelessWidget {
         children: [
           if (isPulse) ...[
             Container(
-              width: 6,
-              height: 6,
+              width: 5,
+              height: 5,
               decoration: BoxDecoration(
                 color: color,
                 shape: BoxShape.circle,
@@ -43,21 +43,24 @@ class StatusChip extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(width: 4),
+            const SizedBox(width: 3),
           ] else if (icon != null) ...[
-            Icon(icon, size: 11, color: color),
-            const SizedBox(width: 4),
+            Icon(icon, size: 10, color: color),
+            const SizedBox(width: 3),
           ],
           Flexible(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: color,
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                label,
+                maxLines: 1,
+                softWrap: false,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 9,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0,
+                ),
               ),
             ),
           ),

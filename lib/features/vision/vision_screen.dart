@@ -261,19 +261,38 @@ class _FilterControl extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      child: SegmentedButton<String>(
-        showSelectedIcon: false,
-        segments: const [
-          ButtonSegment(value: 'all', label: Text('Semua')),
-          ButtonSegment(value: 'disease', label: Text('Penyakit')),
-          ButtonSegment(value: 'pest', label: Text('Hama')),
-          ButtonSegment(value: 'healthy', label: Text('Sehat')),
-        ],
-        selected: {value},
-        onSelectionChanged: (selection) => onChanged(selection.first),
-      ),
+    final filters = const [
+      ('all', 'Semua'),
+      ('disease', 'Penyakit'),
+      ('pest', 'Hama'),
+      ('healthy', 'Sehat'),
+    ];
+
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: [
+        for (final filter in filters)
+          ChoiceChip(
+            label: Text(filter.$2),
+            selected: value == filter.$1,
+            labelStyle: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              color: value == filter.$1 ? Colors.white : AppTheme.textMuted,
+            ),
+            visualDensity: VisualDensity.compact,
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            selectedColor: AppTheme.primaryGreen,
+            backgroundColor: Colors.white,
+            side: BorderSide(
+              color: value == filter.$1
+                  ? AppTheme.primaryGreen
+                  : AppTheme.cardBorder,
+            ),
+            onSelected: (_) => onChanged(filter.$1),
+          ),
+      ],
     );
   }
 }
