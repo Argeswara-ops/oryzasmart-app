@@ -48,7 +48,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ],
                       ),
                       child: const Icon(
-                        Icons.face_rounded,
+                        Icons.grass_rounded,
                         size: 50,
                         color: AppTheme.primaryGreen,
                       ),
@@ -56,7 +56,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 22),
                   const Text(
-                    'PADI APPS',
+                    'ORYZA SMART',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 26,
@@ -67,7 +67,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 4),
                   const Text(
-                    'Monitoring IoT pembibitan padi',
+                    'Pemantauan cerdas pembibitan padi',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 13,

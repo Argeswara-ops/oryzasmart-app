@@ -39,13 +39,13 @@ class DashboardScreen extends ConsumerWidget {
   }
 }
 
-class _DashboardContent extends StatelessWidget {
+class _DashboardContent extends ConsumerWidget {
   const _DashboardContent({required this.snapshot});
 
   final DashboardSnapshot snapshot;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
     final isHealthy =
         snapshot.recommendation.status != 'CRITICAL' &&
@@ -65,63 +65,70 @@ class _DashboardContent extends StatelessWidget {
             end: Alignment.bottomRight,
           ),
           borderColor: const Color(0xFF047857),
+          padding: const EdgeInsets.all(14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.2),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.thermostat_auto_rounded,
-                            color: Colors.white,
-                            size: 18,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        const Expanded(
-                          child: Text(
-                            'Kondisi Padi',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 14.5,
-                              fontWeight: FontWeight.w700,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
+                  Container(
+                    padding: const EdgeInsets.all(7),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.18),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.grass_rounded,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                  ),
+                  const SizedBox(width: 9),
+                  const Expanded(
+                    child: Text(
+                      'Kondisi Padi',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.w800,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   const SizedBox(width: 8),
-                  const Flexible(
-                    flex: 0,
-                    child: StatusChip(
-                      label: 'ONLINE',
-                      color: Colors.white,
-                      isPulse: true,
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.24),
+                      ),
+                    ),
+                    child: const Text(
+                      'ONLINE',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
+                  horizontal: 10,
+                  vertical: 5,
                 ),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(999),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -133,7 +140,7 @@ class _DashboardContent extends StatelessWidget {
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      snapshot.recommendation.status,
+                      snapshot.recommendation.status.split(' ').first,
                       style: TextStyle(
                         color: scheme.tertiary,
                         fontWeight: FontWeight.w800,
@@ -143,14 +150,16 @@ class _DashboardContent extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 10),
               Text(
                 snapshot.recommendation.cause,
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w800,
-                  fontSize: 18,
+                  fontSize: 16,
                 ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 4),
               Text(
@@ -160,22 +169,42 @@ class _DashboardContent extends StatelessWidget {
                   fontSize: 13,
                   height: 1.3,
                 ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
         ),
         const SizedBox(height: 18),
 
-        // Section Title: Telemetry
-        const Text(
-          'Sensor Realtime',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w800,
-            color: Color(0xFF0F172A),
-          ),
+        Row(
+          children: [
+            const Expanded(
+              child: Text(
+                'Sensor Realtime',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF0F172A),
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            IconButton(
+              constraints: const BoxConstraints.tightFor(width: 36, height: 36),
+              padding: EdgeInsets.zero,
+              tooltip: 'Refresh',
+              onPressed: () => ref.invalidate(dashboardProvider),
+              icon: const Icon(
+                Icons.refresh_rounded,
+                color: AppTheme.primaryGreen,
+                size: 20,
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         _SensorGrid(sensor: snapshot.sensor, isHealthy: isHealthy),
 
         const SizedBox(height: 18),
@@ -276,17 +305,21 @@ class _SensorGrid extends StatelessWidget {
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: crossAxisCount,
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 10,
-            childAspectRatio: constraints.maxWidth > 360 ? 1.25 : 1.15,
+            crossAxisSpacing: 8,
+            mainAxisSpacing: 8,
+            childAspectRatio: constraints.maxWidth > 620
+                ? 1.55
+                : constraints.maxWidth > 360
+                ? 1.42
+                : 1.28,
           ),
           itemBuilder: (context, index) {
             final item = items[index];
             return SectionCard(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -300,7 +333,7 @@ class _SensorGrid extends StatelessWidget {
                         child: Icon(
                           item.icon,
                           color: item.accentColor,
-                          size: 18,
+                          size: 17,
                         ),
                       ),
                       const SizedBox(width: 4),
@@ -312,11 +345,11 @@ class _SensorGrid extends StatelessWidget {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 6),
                   Text(
                     item.label,
                     style: const TextStyle(
-                      fontSize: 11.5,
+                      fontSize: 11,
                       color: Color(0xFF64748B),
                       fontWeight: FontWeight.w600,
                     ),
@@ -329,7 +362,7 @@ class _SensorGrid extends StatelessWidget {
                     child: Text(
                       item.value,
                       style: const TextStyle(
-                        fontSize: 17,
+                        fontSize: 16,
                         fontWeight: FontWeight.w800,
                         color: Color(0xFF0F172A),
                       ),

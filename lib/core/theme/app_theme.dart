@@ -52,7 +52,7 @@ class AppTheme {
         backgroundColor: Colors.white,
         elevation: 12,
         shadowColor: primaryGreen.withValues(alpha: 0.08),
-        indicatorColor: primaryGreen.withValues(alpha: 0.15),
+        indicatorColor: Colors.transparent,
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         iconTheme: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {

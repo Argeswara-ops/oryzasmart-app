@@ -3,106 +3,110 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../shared/models/nursery_models.dart';
 import '../../shared/widgets/section_card.dart';
 import '../../shared/widgets/status_chip.dart';
 import '../dashboard/dashboard_controller.dart';
 
-class VisionScreen extends ConsumerWidget {
+class VisionScreen extends ConsumerStatefulWidget {
   const VisionScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<VisionScreen> createState() => _VisionScreenState();
+}
+
+class _VisionScreenState extends ConsumerState<VisionScreen> {
+  static const _pageSize = 4;
+  int _page = 0;
+
+  @override
+  Widget build(BuildContext context) {
     final detections = ref.watch(detectionsProvider);
 
     return detections.when(
       data: (items) {
         final latest = items.first;
+        final pageCount = (items.length / _pageSize).ceil().clamp(1, 999);
+        final currentPage = _page.clamp(0, pageCount - 1);
+        if (currentPage != _page) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) setState(() => _page = currentPage);
+          });
+        }
+        final start = currentPage * _pageSize;
+        final pagedItems = items.skip(start).take(_pageSize).toList();
+
         return ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
           children: [
-            // Camera Stream HUD Viewport Card
             SectionCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
+                      const Icon(
+                        Icons.videocam_rounded,
+                        color: AppTheme.primaryGreen,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
                       Expanded(
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.videocam_rounded,
-                              color: AppTheme.primaryGreen,
-                              size: 20,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                latest.cameraId,
-                                style: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w800,
-                                  color: Color(0xFF0F172A),
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
+                        child: Text(
+                          latest.cameraId,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF0F172A),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       const SizedBox(width: 8),
                       const Text(
-                        '1080p @ 30fps',
+                        '1080p',
                         style: TextStyle(
                           fontSize: 11,
                           color: Color(0xFF64748B),
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 12),
-
-                  // Viewport container
                   ClipRRect(
                     borderRadius: BorderRadius.circular(14),
                     child: AspectRatio(
                       aspectRatio: 16 / 9,
                       child: Container(
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF0F172A), // Sleek Dark Slate
-                        ),
+                        color: const Color(0xFF0F172A),
                         child: Stack(
                           children: [
-                            // Background HUD Grid effect
                             Center(
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
                                   Icon(
-                                    Icons.agriculture_rounded,
-                                    color: Colors.white.withValues(alpha: 0.15),
+                                    Icons.grass_rounded,
+                                    color: Colors.white.withValues(alpha: 0.16),
                                     size: 64,
                                   ),
                                   const SizedBox(height: 8),
                                   Text(
-                                    'PADDY NURSERY FIELD - CAM 01',
+                                    'ORYZA SMART - CAM 01',
                                     style: TextStyle(
                                       color: Colors.white.withValues(
-                                        alpha: 0.3,
+                                        alpha: 0.34,
                                       ),
                                       fontSize: 10,
-                                      letterSpacing: 2,
+                                      letterSpacing: 0,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-
-                            // Camera Corner HUD Markers
                             Positioned(
                               top: 12,
                               left: 12,
@@ -135,13 +139,11 @@ class VisionScreen extends ConsumerWidget {
                                 ),
                               ),
                             ),
-
-                            // AI Bounding Box Frame
                             Positioned(
-                              left: 70,
-                              top: 40,
-                              width: 150,
-                              height: 90,
+                              left: 64,
+                              top: 38,
+                              width: 144,
+                              height: 84,
                               child: DecoratedBox(
                                 decoration: BoxDecoration(
                                   border: Border.all(
@@ -155,12 +157,13 @@ class VisionScreen extends ConsumerWidget {
                                 ),
                               ),
                             ),
-
-                            // Bounding Box Label Tag
                             Positioned(
-                              left: 70,
-                              top: 18,
+                              left: 64,
+                              top: 16,
                               child: Container(
+                                constraints: const BoxConstraints(
+                                  maxWidth: 190,
+                                ),
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 8,
                                   vertical: 3,
@@ -170,12 +173,14 @@ class VisionScreen extends ConsumerWidget {
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 child: Text(
-                                  '${latest.className} (${(latest.confidence * 100).round()}%)',
+                                  '${latest.className} ${(latest.confidence * 100).round()}%',
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontSize: 11,
                                     fontWeight: FontWeight.w800,
                                   ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ),
@@ -184,10 +189,7 @@ class VisionScreen extends ConsumerWidget {
                       ),
                     ),
                   ),
-
                   const SizedBox(height: 14),
-
-                  // Detection Metrics Details
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
@@ -196,7 +198,6 @@ class VisionScreen extends ConsumerWidget {
                       border: Border.all(color: const Color(0xFFE2E8F0)),
                     ),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Expanded(
                           child: Column(
@@ -214,21 +215,19 @@ class VisionScreen extends ConsumerWidget {
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                'Waktu: ${DateFormat('dd MMM yyyy HH:mm').format(latest.detectedAt)}',
+                                DateFormat(
+                                  'dd MMM HH:mm',
+                                ).format(latest.detectedAt),
                                 style: const TextStyle(
                                   fontSize: 12,
                                   color: Color(0xFF64748B),
                                 ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
                               ),
                             ],
                           ),
                         ),
-                        const SizedBox(width: 8),
                         StatusChip(
-                          label:
-                              'AKURASI ${(latest.confidence * 100).round()}%',
+                          label: '${(latest.confidence * 100).round()}%',
                           color: AppTheme.primaryGreen,
                         ),
                       ],
@@ -237,83 +236,69 @@ class VisionScreen extends ConsumerWidget {
                 ],
               ),
             ),
-
             const SizedBox(height: 16),
-
-            // History Section Header
-            const Text(
-              'Riwayat Deteksi AI Terkini',
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w800,
-                color: Color(0xFF0F172A),
-              ),
-            ),
-            const SizedBox(height: 10),
-
-            ...items.map(
-              (item) => Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: SectionCard(
-                  child: Row(
+            SectionCard(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color:
-                              (item.type == 'healthy'
-                                      ? AppTheme.primaryGreen
-                                      : const Color(0xFFD97706))
-                                  .withValues(alpha: 0.12),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          item.type == 'healthy'
-                              ? Icons.verified_rounded
-                              : Icons.warning_amber_rounded,
-                          color: item.type == 'healthy'
-                              ? AppTheme.primaryGreen
-                              : const Color(0xFFD97706),
-                          size: 22,
+                      const Expanded(
+                        child: Text(
+                          'Riwayat',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF0F172A),
+                          ),
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              item.className,
-                              style: const TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700,
-                                color: Color(0xFF0F172A),
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            Text(
-                              '${item.type.toUpperCase()} • ${item.cameraId}',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: Color(0xFF64748B),
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
+                      Text(
+                        '${currentPage + 1}/$pageCount',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Color(0xFF64748B),
+                          fontWeight: FontWeight.w700,
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      StatusChip(
-                        label: '${(item.confidence * 100).round()}%',
-                        color: item.type == 'healthy'
-                            ? AppTheme.primaryGreen
-                            : const Color(0xFFD97706),
                       ),
                     ],
                   ),
-                ),
+                  const SizedBox(height: 10),
+                  for (final item in pagedItems) _DetectionHistoryTile(item),
+                  if (pageCount > 1) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        IconButton(
+                          constraints: const BoxConstraints.tightFor(
+                            width: 34,
+                            height: 34,
+                          ),
+                          padding: EdgeInsets.zero,
+                          tooltip: 'Sebelumnya',
+                          onPressed: currentPage == 0
+                              ? null
+                              : () => setState(() => _page--),
+                          icon: const Icon(Icons.chevron_left_rounded),
+                        ),
+                        IconButton(
+                          constraints: const BoxConstraints.tightFor(
+                            width: 34,
+                            height: 34,
+                          ),
+                          padding: EdgeInsets.zero,
+                          tooltip: 'Berikutnya',
+                          onPressed: currentPage >= pageCount - 1
+                              ? null
+                              : () => setState(() => _page++),
+                          icon: const Icon(Icons.chevron_right_rounded),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
               ),
             ),
           ],
@@ -324,9 +309,76 @@ class VisionScreen extends ConsumerWidget {
       ),
       error: (error, stackTrace) => Center(
         child: Padding(
-          padding: const EdgeInsets.all(24.0),
+          padding: const EdgeInsets.all(24),
           child: Text('Gagal memuat kamera vision: $error'),
         ),
+      ),
+    );
+  }
+}
+
+class _DetectionHistoryTile extends StatelessWidget {
+  const _DetectionHistoryTile(this.item);
+
+  final Detection item;
+
+  @override
+  Widget build(BuildContext context) {
+    final isHealthy = item.type == 'healthy';
+    final color = isHealthy ? AppTheme.primaryGreen : const Color(0xFFD97706);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 8,
+            height: 36,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(999),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.className,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: Color(0xFF0F172A),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${DateFormat('dd MMM HH:mm').format(item.detectedAt)} - ${item.cameraId}',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: Color(0xFF64748B),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          StatusChip(
+            label: '${(item.confidence * 100).round()}%',
+            color: color,
+          ),
+        ],
       ),
     );
   }

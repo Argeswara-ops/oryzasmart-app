@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../core/config/app_config.dart';
 import '../../core/theme/app_theme.dart';
 import '../../shared/widgets/section_card.dart';
-import '../../shared/widgets/status_chip.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key, required this.onLogout});
@@ -15,34 +14,54 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  final _nameController = TextEditingController(text: 'Petani Padi');
-  final _emailController = TextEditingController(text: 'petani@padi.local');
-  final _phoneController = TextEditingController(text: '0812-0000-1234');
-  bool _hasProfile = true;
-  bool _isEditing = false;
+  String _name = 'Petani Padi';
+  String _email = 'petani@oryza.smart';
 
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _emailController.dispose();
-    _phoneController.dispose();
-    super.dispose();
-  }
+  Future<void> _editProfile() async {
+    final nameController = TextEditingController(text: _name);
+    final emailController = TextEditingController(text: _email);
 
-  void _saveProfile() {
+    final result = await showDialog<({String name, String email})>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Profil'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              decoration: const InputDecoration(labelText: 'Nama'),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: emailController,
+              decoration: const InputDecoration(labelText: 'Email'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Batal'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, (
+              name: nameController.text.trim(),
+              email: emailController.text.trim(),
+            )),
+            child: const Text('Simpan'),
+          ),
+        ],
+      ),
+    );
+
+    nameController.dispose();
+    emailController.dispose();
+
+    if (result == null) return;
     setState(() {
-      _hasProfile = true;
-      _isEditing = false;
-    });
-  }
-
-  void _deleteProfile() {
-    setState(() {
-      _hasProfile = false;
-      _isEditing = true;
-      _nameController.clear();
-      _emailController.clear();
-      _phoneController.clear();
+      _name = result.name.isEmpty ? _name : result.name;
+      _email = result.email.isEmpty ? _email : result.email;
     });
   }
 
@@ -52,275 +71,117 @@ class _SettingsScreenState extends State<SettingsScreen> {
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       children: [
         SectionCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Row(
             children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(9),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primaryGreen.withValues(alpha: 0.12),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.person_rounded,
-                      color: AppTheme.primaryGreen,
-                      size: 22,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      _hasProfile ? _nameController.text : 'Profil baru',
+              CircleAvatar(
+                radius: 26,
+                backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.12),
+                child: const Icon(
+                  Icons.grass_rounded,
+                  color: AppTheme.primaryGreen,
+                  size: 28,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _name,
                       style: const TextStyle(
-                        fontSize: 15,
+                        fontSize: 16,
                         fontWeight: FontWeight.w800,
                         color: Color(0xFF0F172A),
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                  IconButton(
-                    tooltip: _isEditing ? 'Simpan' : 'Edit',
-                    onPressed: _isEditing
-                        ? _saveProfile
-                        : () => setState(() => _isEditing = true),
-                    icon: Icon(
-                      _isEditing ? Icons.check_rounded : Icons.edit_rounded,
-                    ),
-                    color: AppTheme.primaryGreen,
-                  ),
-                  IconButton(
-                    tooltip: 'Hapus',
-                    onPressed: _hasProfile ? _deleteProfile : null,
-                    icon: const Icon(Icons.delete_outline_rounded),
-                    color: const Color(0xFFDC2626),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              _ProfileField(
-                controller: _nameController,
-                label: 'Nama',
-                icon: Icons.badge_outlined,
-                enabled: _isEditing,
-              ),
-              const SizedBox(height: 10),
-              _ProfileField(
-                controller: _emailController,
-                label: 'Email',
-                icon: Icons.email_outlined,
-                enabled: _isEditing,
-              ),
-              const SizedBox(height: 10),
-              _ProfileField(
-                controller: _phoneController,
-                label: 'Telepon',
-                icon: Icons.call_outlined,
-                enabled: _isEditing,
-              ),
-              const SizedBox(height: 14),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => setState(() {
-                        _hasProfile = true;
-                        _isEditing = true;
-                      }),
-                      icon: const Icon(Icons.add_rounded),
-                      label: const Text('Tambah'),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: FilledButton.icon(
-                      onPressed: widget.onLogout,
-                      icon: const Icon(Icons.logout_rounded),
-                      label: const Text('Logout'),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 14),
-        SectionCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Row(
-                children: [
-                  Icon(
-                    Icons.api_rounded,
-                    color: AppTheme.primaryGreen,
-                    size: 22,
-                  ),
-                  SizedBox(width: 8),
-                  Text(
-                    'Backend API',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF0F172A),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                ),
-                child: const Row(
-                  children: [
-                    Icon(
-                      Icons.link_rounded,
-                      size: 18,
-                      color: Color(0xFF64748B),
-                    ),
-                    SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        AppConfig.apiBaseUrl,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF0F172A),
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                    const SizedBox(height: 2),
+                    Text(
+                      _email,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF64748B),
+                        fontWeight: FontWeight.w500,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
+              IconButton(
+                tooltip: 'Edit',
+                onPressed: _editProfile,
+                icon: const Icon(Icons.edit_rounded),
+                color: AppTheme.primaryGreen,
+              ),
+              IconButton(
+                tooltip: 'Logout',
+                onPressed: widget.onLogout,
+                icon: const Icon(Icons.logout_rounded),
+                color: const Color(0xFFDC2626),
+              ),
             ],
           ),
         ),
         const SizedBox(height: 14),
-        SectionCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Row(
-                children: [
-                  Icon(Icons.hub_rounded, color: Color(0xFF0D9488), size: 22),
-                  SizedBox(width: 8),
-                  Text(
-                    'MQTT',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      color: Color(0xFF0F172A),
-                    ),
-                  ),
-                  Spacer(),
-                  StatusChip(label: 'v1.0.0', color: AppTheme.primaryGreen),
-                ],
-              ),
-              const SizedBox(height: 12),
-              _SettingTile(
-                icon: Icons.sensors_rounded,
-                title: 'Sensor',
-                subtitle: AppConfig.mqttSensorTopic,
-              ),
-              const SizedBox(height: 8),
-              _SettingTile(
-                icon: Icons.air_rounded,
-                title: 'Kipas',
-                subtitle: AppConfig.mqttFanCommandTopic,
-              ),
-            ],
-          ),
+        const _ConfigCard(title: 'Backend API', value: AppConfig.apiBaseUrl),
+        const SizedBox(height: 14),
+        const _ConfigCard(
+          title: 'MQTT Sensor',
+          value: AppConfig.mqttSensorTopic,
+        ),
+        const SizedBox(height: 10),
+        const _ConfigCard(
+          title: 'MQTT Kipas',
+          value: AppConfig.mqttFanCommandTopic,
         ),
       ],
     );
   }
 }
 
-class _ProfileField extends StatelessWidget {
-  const _ProfileField({
-    required this.controller,
-    required this.label,
-    required this.icon,
-    required this.enabled,
-  });
+class _ConfigCard extends StatelessWidget {
+  const _ConfigCard({required this.title, required this.value});
 
-  final TextEditingController controller;
-  final String label;
-  final IconData icon;
-  final bool enabled;
-
-  @override
-  Widget build(BuildContext context) {
-    return TextField(
-      controller: controller,
-      enabled: enabled,
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon),
-        isDense: true,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-    );
-  }
-}
-
-class _SettingTile extends StatelessWidget {
-  const _SettingTile({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-  });
-
-  final IconData icon;
   final String title;
-  final String subtitle;
+  final String value;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Row(
+    return SectionCard(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 18, color: const Color(0xFF64748B)),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: Color(0xFF64748B),
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF0F172A),
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
+              color: Color(0xFF0F172A),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF334155),
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],

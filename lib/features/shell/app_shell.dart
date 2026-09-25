@@ -40,8 +40,8 @@ class _AppShellState extends ConsumerState<AppShell> {
                 color: AppTheme.primaryGreen.withValues(alpha: 0.12),
                 shape: BoxShape.circle,
               ),
-                child: const Icon(
-                  Icons.face_rounded,
+              child: const Icon(
+                Icons.grass_rounded,
                 color: AppTheme.primaryGreen,
                 size: 19,
               ),
@@ -77,11 +77,11 @@ class _AppShellState extends ConsumerState<AppShell> {
             ),
           ],
         ),
-        1 => _AppBarTitle(title: 'Device', subtitle: 'Node & kamera'),
-        2 => _AppBarTitle(title: 'Vision AI', subtitle: 'Deteksi tanaman'),
-        3 => _AppBarTitle(title: 'Riwayat', subtitle: 'Grafik & log'),
-        4 => _AppBarTitle(title: 'Pengaturan', subtitle: 'Profil & aplikasi'),
-        _ => const Text('PADI APPS'),
+        1 => const _AppBarTitle(title: 'Device'),
+        2 => const _AppBarTitle(title: 'Vision'),
+        3 => const _AppBarTitle(title: 'Riwayat'),
+        4 => const _AppBarTitle(title: 'Setting'),
+        _ => const Text('ORYZA SMART'),
       };
 
       return AppBar(
@@ -214,38 +214,21 @@ class _AppShellState extends ConsumerState<AppShell> {
 }
 
 class _AppBarTitle extends StatelessWidget {
-  const _AppBarTitle({required this.title, required this.subtitle});
+  const _AppBarTitle({required this.title});
 
   final String title;
-  final String subtitle;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 17,
-            fontWeight: FontWeight.w800,
-            color: Color(0xFF0F172A),
-          ),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        Text(
-          subtitle,
-          style: const TextStyle(
-            fontSize: 10.5,
-            fontWeight: FontWeight.w500,
-            color: Color(0xFF64748B),
-          ),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-      ],
+    return Text(
+      title,
+      style: const TextStyle(
+        fontSize: 18,
+        fontWeight: FontWeight.w800,
+        color: Color(0xFF0F172A),
+      ),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
     );
   }
 }

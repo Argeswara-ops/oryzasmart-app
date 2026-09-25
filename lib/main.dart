@@ -15,7 +15,7 @@ class SmartRiceNurseryApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Smart Rice Nursery',
+      title: 'ORYZA SMART',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       home: const AppEntry(),
