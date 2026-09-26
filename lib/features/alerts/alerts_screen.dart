@@ -150,15 +150,16 @@ class AlertsScreen extends ConsumerWidget {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
-                              Text(
-                                '$unreadCount belum dibaca dari ${alerts.length} data',
-                                style: const TextStyle(
-                                  color: AppTheme.textMuted,
-                                  fontSize: 11,
+                              if (unreadCount > 0)
+                                Text(
+                                  '$unreadCount belum dibaca dari ${alerts.length} data',
+                                  style: const TextStyle(
+                                    color: AppTheme.textMuted,
+                                    fontSize: 11,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
                             ],
                           ),
                         ),
@@ -191,17 +192,18 @@ class AlertsScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 12),
                   ] else ...[
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Text(
-                        '$unreadCount belum dibaca dari ${alerts.length} data',
-                        style: const TextStyle(
-                          color: AppTheme.textMuted,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
+                    if (unreadCount > 0)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Text(
+                          '$unreadCount belum dibaca dari ${alerts.length} data',
+                          style: const TextStyle(
+                            color: AppTheme.textMuted,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
-                    ),
                   ],
                   if (alerts.isEmpty)
                     const _EmptyAlertState()
@@ -313,10 +315,11 @@ class _AlertCard extends ConsumerWidget {
               ),
             ),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  width: 38,
-                  height: 38,
+                  width: 36,
+                  height: 36,
                   decoration: BoxDecoration(
                     color: color.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(8),
@@ -335,56 +338,58 @@ class _AlertCard extends ConsumerWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              alert.title,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w900,
-                                fontSize: 13,
-                                color: AppTheme.textStrong,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            DateFormat.Hm().format(alert.createdAt),
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: Color(0xFF94A3B8),
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
+                      Text(
+                        alert.title,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 13,
+                          color: AppTheme.textStrong,
+                          height: 1.15,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: 3),
                       Text(
                         alert.message,
                         style: const TextStyle(
                           fontSize: 11,
                           color: AppTheme.textMuted,
+                          height: 1.25,
                         ),
-                        maxLines: 1,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        DateFormat('dd MMM, HH:mm').format(alert.createdAt),
+                        style: const TextStyle(
+                          fontSize: 10.5,
+                          color: Color(0xFF94A3B8),
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(width: 6),
-                Icon(
-                  alert.isRead
-                      ? Icons.mark_email_read_rounded
-                      : Icons.fiber_manual_record_rounded,
-                  color: alert.isRead ? AppTheme.textMuted : color,
-                  size: alert.isRead ? 17 : 11,
-                ),
-                const Icon(
-                  Icons.chevron_right_rounded,
-                  color: AppTheme.textMuted,
-                  size: 18,
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      alert.isRead
+                          ? Icons.mark_email_read_rounded
+                          : Icons.fiber_manual_record_rounded,
+                      color: alert.isRead ? AppTheme.textMuted : color,
+                      size: alert.isRead ? 16 : 10,
+                    ),
+                    const SizedBox(height: 8),
+                    const Icon(
+                      Icons.chevron_right_rounded,
+                      color: AppTheme.textMuted,
+                      size: 18,
+                    ),
+                  ],
                 ),
               ],
             ),

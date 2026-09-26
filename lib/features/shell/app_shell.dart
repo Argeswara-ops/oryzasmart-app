@@ -121,7 +121,6 @@ class _AppShellState extends ConsumerState<AppShell> {
                           backgroundColor: const Color(0xFFF8FAFC),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(11),
-                            side: const BorderSide(color: AppTheme.cardBorder),
                           ),
                         ),
                         icon: const Icon(

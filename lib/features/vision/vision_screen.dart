@@ -415,7 +415,7 @@ class _DetectionDetailView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = _detectionColor(detection.type);
-    final date = DateFormat('dd MMMM yyyy, HH:mm').format(detection.detectedAt);
+    final date = DateFormat('dd MMM, HH:mm').format(detection.detectedAt);
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
