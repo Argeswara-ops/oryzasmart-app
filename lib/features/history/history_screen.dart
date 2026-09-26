@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -101,6 +103,7 @@ class _SensorHistory extends StatelessWidget {
           legends: [_ChartLegend(label: spec.unit, color: spec.color)],
           minY: stats.minY,
           maxY: stats.maxY,
+          yInterval: stats.yInterval,
           lines: [_ChartLine(values: values, color: spec.color, fill: true)],
         ),
         const SizedBox(height: 12),
@@ -127,14 +130,15 @@ class _NpkChart extends StatelessWidget {
       title: 'Grafik NPK',
       legends: const [
         _ChartLegend(label: 'N', color: AppTheme.primaryGreen),
-        _ChartLegend(label: 'P', color: AppTheme.teal),
+        _ChartLegend(label: 'P', color: AppTheme.infoBlue),
         _ChartLegend(label: 'K', color: AppTheme.warning),
       ],
       minY: stats.minY,
       maxY: stats.maxY,
+      yInterval: stats.yInterval,
       lines: [
         _ChartLine(values: nitrogen, color: AppTheme.primaryGreen),
-        _ChartLine(values: phosphorus, color: AppTheme.teal),
+        _ChartLine(values: phosphorus, color: AppTheme.infoBlue),
         _ChartLine(values: potassium, color: AppTheme.warning),
       ],
     );
@@ -147,6 +151,7 @@ class _ChartCard extends StatelessWidget {
     required this.legends,
     required this.minY,
     required this.maxY,
+    required this.yInterval,
     required this.lines,
   });
 
@@ -154,6 +159,7 @@ class _ChartCard extends StatelessWidget {
   final List<Widget> legends;
   final double minY;
   final double maxY;
+  final double yInterval;
   final List<_ChartLine> lines;
 
   @override
@@ -204,16 +210,23 @@ class _ChartCard extends StatelessWidget {
                   leftTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
-                      reservedSize: 34,
-                      interval: ((maxY - minY) / 4).clamp(1, 999).toDouble(),
-                      getTitlesWidget: (value, meta) => Text(
-                        value.round().toString(),
-                        style: const TextStyle(
-                          color: AppTheme.textMuted,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
+                      reservedSize: 42,
+                      interval: yInterval,
+                      getTitlesWidget: (value, meta) {
+                        final text = _formatAxisValue(value, yInterval);
+                        return SizedBox(
+                          width: 38,
+                          child: Text(
+                            text,
+                            textAlign: TextAlign.right,
+                            style: const TextStyle(
+                              color: AppTheme.textMuted,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ),
                 ),
@@ -582,8 +595,10 @@ class _Stats {
   final double min;
   final double max;
 
-  double get minY => (min - 5).clamp(0, double.infinity).toDouble();
-  double get maxY => max + 5;
+  _AxisScale get _axisScale => _AxisScale.from(min: min, max: max);
+  double get minY => _axisScale.minY;
+  double get maxY => _axisScale.maxY;
+  double get yInterval => _axisScale.interval;
 
   static _Stats from(List<double> values) {
     if (values.isEmpty) {
@@ -601,4 +616,54 @@ class _Stats {
       max: max,
     );
   }
+}
+
+class _AxisScale {
+  const _AxisScale({
+    required this.minY,
+    required this.maxY,
+    required this.interval,
+  });
+
+  final double minY;
+  final double maxY;
+  final double interval;
+
+  factory _AxisScale.from({required double min, required double max}) {
+    final rawRange = (max - min).abs();
+    final padding = rawRange == 0
+        ? math.max(max.abs() * 0.08, 1)
+        : rawRange * 0.16;
+    final paddedMin = math.max(0, min - padding);
+    final paddedMax = max + padding;
+    final step = _niceStep((paddedMax - paddedMin) / 4);
+    final axisMin = (paddedMin / step).floor() * step;
+    final axisMax = (paddedMax / step).ceil() * step;
+
+    return _AxisScale(
+      minY: axisMin.toDouble(),
+      maxY: axisMax <= axisMin ? axisMin + step : axisMax.toDouble(),
+      interval: step,
+    );
+  }
+}
+
+double _niceStep(double rawStep) {
+  if (rawStep <= 0 || rawStep.isNaN || rawStep.isInfinite) return 1;
+
+  final exponent = math.pow(10, (math.log(rawStep) / math.ln10).floor());
+  final fraction = rawStep / exponent;
+  final niceFraction = switch (fraction) {
+    <= 1 => 1,
+    <= 2 => 2,
+    <= 5 => 5,
+    _ => 10,
+  };
+
+  return (niceFraction * exponent).toDouble();
+}
+
+String _formatAxisValue(double value, double interval) {
+  final needsDecimal = interval < 1;
+  return needsDecimal ? value.toStringAsFixed(1) : value.round().toString();
 }

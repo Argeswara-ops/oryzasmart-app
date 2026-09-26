@@ -1,4 +1,4 @@
-# padiapps
+# ORYZA SMART
 
 A new Flutter project.
 
