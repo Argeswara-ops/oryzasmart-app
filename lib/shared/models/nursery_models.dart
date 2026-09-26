@@ -162,9 +162,20 @@ class SystemAlert {
   final DateTime createdAt;
   final bool isRead;
 
+  SystemAlert copyWith({bool? isRead}) {
+    return SystemAlert(
+      id: id,
+      level: level,
+      title: title,
+      message: message,
+      createdAt: createdAt,
+      isRead: isRead ?? this.isRead,
+    );
+  }
+
   factory SystemAlert.fromJson(Map<String, dynamic> json) {
     return SystemAlert(
-      id: _toInt(json['id']),
+      id: _toNullableInt(json['id']),
       level: _normalizeStatus(json['level'] ?? json['severity'] ?? 'WARNING'),
       title: '${json['title'] ?? 'Alert'}',
       message: '${json['message'] ?? ''}',
@@ -202,10 +213,11 @@ double _toDouble(Object? value) {
   return double.tryParse('$value') ?? 0;
 }
 
-int _toInt(Object? value) {
+int? _toNullableInt(Object? value) {
+  if (value == null) return null;
   if (value is int) return value;
   if (value is num) return value.toInt();
-  return int.tryParse('$value') ?? 0;
+  return int.tryParse('$value');
 }
 
 DateTime? _toDateTime(Object? value) {

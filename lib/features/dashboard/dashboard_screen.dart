@@ -995,8 +995,8 @@ class _Condition {
       return const _Condition(
         title: 'Perlu Perhatian',
         icon: Icons.warning_amber_rounded,
-        gradient: [Color(0xFF92400E), AppTheme.warning],
-        borderColor: Color(0xFFB45309),
+        gradient: [AppTheme.primaryGreenDark, AppTheme.teal],
+        borderColor: AppTheme.primaryGreen,
       );
     }
     return const _Condition(

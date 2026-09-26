@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/app_theme.dart';
+import '../../shared/models/nursery_models.dart';
 import '../../shared/repositories/nursery_repository.dart';
 import '../alerts/alerts_screen.dart';
 import '../dashboard/dashboard_controller.dart';
@@ -23,24 +24,54 @@ class AppShell extends ConsumerStatefulWidget {
 
 class _AppShellState extends ConsumerState<AppShell> {
   int _index = 0;
+  bool _showNotifications = false;
+
+  void _openNotificationsPage() {
+    setState(() => _showNotifications = true);
+  }
+
+  void _openAlertTarget(SystemAlert alert) {
+    final target = _targetIndexForAlert(alert);
+    setState(() {
+      _index = target;
+      _showNotifications = false;
+    });
+  }
+
+  int _targetIndexForAlert(SystemAlert alert) {
+    final text = '${alert.title} ${alert.message}'.toLowerCase();
+    if (text.contains('deteksi') ||
+        text.contains('camera') ||
+        text.contains('cam-') ||
+        text.contains('rice') ||
+        text.contains('blast') ||
+        text.contains('hama') ||
+        text.contains('penyakit')) {
+      return 2;
+    }
+    if (text.contains('riwayat') || text.contains('history')) return 3;
+    return 0;
+  }
 
   @override
   Widget build(BuildContext context) {
     final dashboardState = ref.watch(dashboardProvider);
     final alertCount = dashboardState.maybeWhen(
-      data: (data) => data.alerts.length,
+      data: (data) => data.unreadAlerts,
       orElse: () => 0,
     );
 
     PreferredSizeWidget buildAppBar() {
-      final titleWidget = switch (_index) {
-        0 => const _BrandTitle(),
-        1 => const _AppBarTitle(title: 'Device'),
-        2 => const _AppBarTitle(title: 'Vision'),
-        3 => const _AppBarTitle(title: 'Riwayat'),
-        4 => const _AppBarTitle(title: 'Settings'),
-        _ => const Text('ORYZA SMART'),
-      };
+      final titleWidget = _showNotifications
+          ? const _AppBarTitle(title: 'Notifikasi')
+          : switch (_index) {
+              0 => const _BrandTitle(),
+              1 => const _AppBarTitle(title: 'Device'),
+              2 => const _AppBarTitle(title: 'Vision'),
+              3 => const _AppBarTitle(title: 'Riwayat'),
+              4 => const _AppBarTitle(title: 'Settings'),
+              _ => const Text('ORYZA SMART'),
+            };
 
       return AppBar(
         backgroundColor: Colors.white,
@@ -48,6 +79,13 @@ class _AppShellState extends ConsumerState<AppShell> {
         elevation: 0,
         scrolledUnderElevation: 0,
         titleSpacing: 16,
+        leading: _showNotifications
+            ? IconButton(
+                tooltip: 'Kembali',
+                icon: const Icon(Icons.arrow_back_rounded),
+                onPressed: () => setState(() => _showNotifications = false),
+              )
+            : null,
         title: titleWidget,
         actions: [
           Padding(
@@ -73,8 +111,12 @@ class _AppShellState extends ConsumerState<AppShell> {
                     color: Color(0xFF334155),
                     size: 21,
                   ),
-                  tooltip: 'Notif',
-                  onPressed: () => showAlertsBottomSheet(context),
+                  tooltip: 'Notifikasi',
+                  onPressed: () => showAlertsBottomSheet(
+                    context,
+                    onOpenAll: _openNotificationsPage,
+                    onAlertSelected: _openAlertTarget,
+                  ),
                 ),
                 if (alertCount > 0)
                   Positioned(
@@ -115,13 +157,16 @@ class _AppShellState extends ConsumerState<AppShell> {
       const HistoryScreen(),
       SettingsScreen(user: widget.user, onLogout: widget.onLogout),
     ];
+    final body = _showNotifications
+        ? AlertsScreen(onAlertSelected: _openAlertTarget)
+        : screens[_index];
 
     return Scaffold(
       appBar: buildAppBar(),
       body: SafeArea(
         child: AnimatedSwitcher(
           duration: const Duration(milliseconds: 250),
-          child: screens[_index],
+          child: body,
         ),
       ),
       bottomNavigationBar: Container(
@@ -137,7 +182,10 @@ class _AppShellState extends ConsumerState<AppShell> {
         child: NavigationBar(
           height: 58,
           selectedIndex: _index,
-          onDestinationSelected: (value) => setState(() => _index = value),
+          onDestinationSelected: (value) => setState(() {
+            _index = value;
+            _showNotifications = false;
+          }),
           destinations: const [
             NavigationDestination(
               icon: Icon(Icons.grid_view_outlined),

@@ -1,21 +1,30 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api/api_providers.dart';
 import '../../shared/models/nursery_models.dart';
 
-final dashboardProvider = FutureProvider<DashboardSnapshot>((ref) async {
-  return ref.watch(nurseryRepositoryProvider).getDashboard();
+const _dashboardRefreshInterval = Duration(seconds: 5);
+const _historyRefreshInterval = Duration(seconds: 12);
+
+final dashboardProvider = StreamProvider<DashboardSnapshot>((ref) {
+  final repository = ref.watch(nurseryRepositoryProvider);
+  return _poll(repository.getDashboard, _dashboardRefreshInterval);
 });
 
 final sensorHistoryProvider =
-    FutureProvider.family<List<SensorReading>, String>((ref, range) async {
-      return ref
-          .watch(nurseryRepositoryProvider)
-          .getSensorHistory(range: _apiRange(range));
+    StreamProvider.family<List<SensorReading>, String>((ref, range) {
+      final repository = ref.watch(nurseryRepositoryProvider);
+      return _poll(
+        () => repository.getSensorHistory(range: _apiRange(range)),
+        _historyRefreshInterval,
+      );
     });
 
-final detectionsProvider = FutureProvider<List<Detection>>((ref) async {
-  return ref.watch(nurseryRepositoryProvider).getDetections();
+final detectionsProvider = StreamProvider<List<Detection>>((ref) {
+  final repository = ref.watch(nurseryRepositoryProvider);
+  return _poll(repository.getDetections, _historyRefreshInterval);
 });
 
 final fanControllerProvider = AsyncNotifierProvider<FanController, FanState>(
@@ -41,6 +50,7 @@ class FanController extends AsyncNotifier<FanState> {
       () => ref.read(nurseryRepositoryProvider).setFanStatus(status),
     );
     state = result.hasError && previous != null ? AsyncData(previous) : result;
+    ref.invalidate(dashboardProvider);
   }
 
   Future<void> setMode(String mode) async {
@@ -53,6 +63,7 @@ class FanController extends AsyncNotifier<FanState> {
       () => ref.read(nurseryRepositoryProvider).setFanMode(mode),
     );
     state = result.hasError && previous != null ? AsyncData(previous) : result;
+    ref.invalidate(dashboardProvider);
   }
 }
 
@@ -62,4 +73,28 @@ String _apiRange(String value) {
     '30d' => '30days',
     _ => value,
   };
+}
+
+Stream<T> _poll<T>(Future<T> Function() fetch, Duration interval) {
+  return Stream<T>.multi((controller) {
+    Timer? timer;
+    var isFetching = false;
+
+    Future<void> tick() async {
+      if (isFetching || controller.isClosed) return;
+      isFetching = true;
+      try {
+        final value = await fetch();
+        if (!controller.isClosed) controller.add(value);
+      } catch (error, stackTrace) {
+        if (!controller.isClosed) controller.addError(error, stackTrace);
+      } finally {
+        isFetching = false;
+      }
+    }
+
+    tick();
+    timer = Timer.periodic(interval, (_) => tick());
+    controller.onCancel = () => timer?.cancel();
+  });
 }

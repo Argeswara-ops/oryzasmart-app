@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/api/api_client.dart';
 import '../../core/config/app_config.dart';
@@ -7,8 +8,15 @@ import '../models/nursery_models.dart';
 class NurseryRepository {
   NurseryRepository(this._client);
 
+  static const _tokenKey = 'oryza_auth_token';
+  static const _userIdKey = 'oryza_auth_user_id';
+  static const _userNameKey = 'oryza_auth_user_name';
+  static const _userEmailKey = 'oryza_auth_user_email';
+  static const _userRoleKey = 'oryza_auth_user_role';
+
   final ApiClient _client;
   FanState _fan = const FanState(status: 'ON', mode: 'AUTO');
+  final Set<int> _readAlertIds = {};
 
   Future<AuthUser> login({
     required String email,
@@ -29,6 +37,7 @@ class NurseryRepository {
       final user = data['user'] is Map<String, dynamic>
           ? AuthUser.fromJson(data['user'] as Map<String, dynamic>)
           : AuthUser.fallback(email);
+      await _saveSession(token: token, user: user);
       return user;
     } on DioException catch (error) {
       throw LoginException.fromDio(error);
@@ -42,6 +51,28 @@ class NurseryRepository {
       // Sesi lokal tetap perlu dibersihkan saat backend tidak terjangkau.
     } finally {
       _client.clearToken();
+      await _clearSession();
+    }
+  }
+
+  Future<AuthUser?> restoreSession() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString(_tokenKey);
+      final email = prefs.getString(_userEmailKey);
+      if (token == null || token.isEmpty || email == null || email.isEmpty) {
+        return null;
+      }
+
+      _client.setToken(token);
+      return AuthUser(
+        id: prefs.getInt(_userIdKey) ?? 0,
+        name: prefs.getString(_userNameKey) ?? 'Operator Pembibitan',
+        email: email,
+        role: prefs.getString(_userRoleKey) ?? 'operator',
+      );
+    } catch (_) {
+      return null;
     }
   }
 
@@ -54,6 +85,15 @@ class NurseryRepository {
       if (data.isEmpty) return _mockDashboard();
 
       final fallback = _mockDashboard();
+      final alerts = _applyReadState(
+        _alertsFrom(data['alerts'], fallback.alerts),
+      );
+      final localUnreadAlerts = alerts.where((alert) => !alert.isRead).length;
+      final serverUnreadAlerts = _toInt(data['unread_alerts']);
+      final unreadAlerts = serverUnreadAlerts > localUnreadAlerts
+          ? (serverUnreadAlerts - _readAlertIds.length).clamp(0, 999)
+          : localUnreadAlerts;
+
       return DashboardSnapshot(
         device: DeviceStatus.fromJson(
           _mapOf(data['device']),
@@ -74,7 +114,7 @@ class NurseryRepository {
           _mapOf(data['latest_detection'] ?? data['detection']),
         ),
         fan: FanState.fromJson(_mapOf(data['fan'])),
-        alerts: _alertsFrom(data['alerts'], fallback.alerts),
+        alerts: alerts,
         recommendation: data['recommendation'] is Map<String, dynamic>
             ? Recommendation.fromJson(
                 data['recommendation'] as Map<String, dynamic>,
@@ -84,7 +124,7 @@ class NurseryRepository {
                 fallback.recommendation,
               ),
         systemStatus: '${data['system_status'] ?? 'NORMAL'}',
-        unreadAlerts: _toInt(data['unread_alerts']),
+        unreadAlerts: unreadAlerts,
       );
     } on DioException {
       return _mockDashboard();
@@ -194,22 +234,46 @@ class NurseryRepository {
   Future<List<SystemAlert>> getAlerts() async {
     try {
       final response = await _client.dio.get<dynamic>('/alerts');
-      return _client
+      final alerts = _client
           .listEnvelope(response)
           .whereType<Map<String, dynamic>>()
           .map(SystemAlert.fromJson)
           .toList();
+      return _applyReadState(alerts);
     } on DioException {
-      return _mockDashboard().alerts;
+      return _applyReadState(_mockDashboard().alerts);
     }
   }
 
   Future<void> markAlertRead(int id) async {
+    _readAlertIds.add(id);
     try {
       await _client.dio.post<Map<String, dynamic>>('/alerts/$id/read');
     } on DioException {
       // Status baca akan ikut sinkron saat refresh backend berikutnya.
     }
+  }
+
+  Future<void> _saveSession({
+    required String token,
+    required AuthUser user,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_tokenKey, token);
+    await prefs.setInt(_userIdKey, user.id);
+    await prefs.setString(_userNameKey, user.name);
+    await prefs.setString(_userEmailKey, user.email);
+    await prefs.setString(_userRoleKey, user.role);
+  }
+
+  Future<void> _clearSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_tokenKey);
+    await prefs.remove(_userIdKey);
+    await prefs.remove(_userNameKey);
+    await prefs.remove(_userEmailKey);
+    await prefs.remove(_userRoleKey);
+    _readAlertIds.clear();
   }
 
   Future<List<Recommendation>> getRecommendations() async {
@@ -335,6 +399,16 @@ class NurseryRepository {
     return fallback;
   }
 
+  List<SystemAlert> _applyReadState(List<SystemAlert> alerts) {
+    return [
+      for (final alert in alerts)
+        if (alert.id != null && _readAlertIds.contains(alert.id))
+          alert.copyWith(isRead: true)
+        else
+          alert,
+    ];
+  }
+
   Recommendation _recommendationFromStatus(
     String status,
     Recommendation fallback,
@@ -366,6 +440,22 @@ class NurseryRepository {
 
   DashboardSnapshot _mockDashboard() {
     final now = DateTime.now();
+    final alerts = _applyReadState([
+      SystemAlert(
+        id: 1,
+        level: 'WARNING',
+        title: 'Kelembapan tinggi',
+        message: 'Kelembapan udara berada di 81%.',
+        createdAt: now.subtract(const Duration(minutes: 8)),
+      ),
+      SystemAlert(
+        id: 2,
+        level: 'WARNING',
+        title: 'Rice Blast terdeteksi',
+        message: 'CAM-01 mendeteksi penyakit dengan confidence 92%.',
+        createdAt: now.subtract(const Duration(minutes: 6)),
+      ),
+    ]);
     return DashboardSnapshot(
       device: DeviceStatus(
         code: 'ESP32-01',
@@ -399,20 +489,7 @@ class NurseryRepository {
         detectedAt: now.subtract(const Duration(minutes: 6)),
       ),
       fan: _fan,
-      alerts: [
-        SystemAlert(
-          level: 'WARNING',
-          title: 'Kelembapan tinggi',
-          message: 'Kelembapan udara berada di 81%.',
-          createdAt: now.subtract(const Duration(minutes: 8)),
-        ),
-        SystemAlert(
-          level: 'WARNING',
-          title: 'Rice Blast terdeteksi',
-          message: 'CAM-01 mendeteksi penyakit dengan confidence 92%.',
-          createdAt: now.subtract(const Duration(minutes: 6)),
-        ),
-      ],
+      alerts: alerts,
       recommendation: const Recommendation(
         status: 'PERLU PERHATIAN',
         cause: 'Kelembapan udara tinggi dan Rice Blast terdeteksi.',
@@ -420,7 +497,7 @@ class NurseryRepository {
             'Periksa tanaman pada area CAM-01 dan jaga sirkulasi udara pembibitan.',
       ),
       systemStatus: 'WARNING',
-      unreadAlerts: 2,
+      unreadAlerts: alerts.where((alert) => !alert.isRead).length,
     );
   }
 

@@ -39,9 +39,30 @@ class AppEntry extends ConsumerStatefulWidget {
 class _AppEntryState extends ConsumerState<AppEntry> {
   AuthUser? _user;
   bool _hasSeenOnboarding = false;
+  bool _isRestoringSession = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _restoreSession();
+  }
+
+  Future<void> _restoreSession() async {
+    final user = await ref.read(nurseryRepositoryProvider).restoreSession();
+    if (!mounted) return;
+    setState(() {
+      _user = user;
+      _hasSeenOnboarding = user != null;
+      _isRestoringSession = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (_isRestoringSession) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
     final user = _user;
     if (user != null) {
       return AppShell(
