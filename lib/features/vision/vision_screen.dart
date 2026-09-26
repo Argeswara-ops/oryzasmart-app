@@ -21,11 +21,28 @@ class _VisionScreenState extends ConsumerState<VisionScreen> {
   @override
   Widget build(BuildContext context) {
     final detections = ref.watch(detectionsProvider);
+    final selectedDetection = ref.watch(visionSelectedDetectionProvider);
 
     return detections.when(
       data: (items) {
         if (items.isEmpty) {
           return _EmptyVision(onRefresh: () => ref.refresh(detectionsProvider));
+        }
+
+        final focusAlert = ref.watch(visionFocusAlertProvider);
+        if (focusAlert != null) {
+          final focusedDetection = _findDetectionForAlert(items, focusAlert);
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            ref.read(visionFocusAlertProvider.notifier).setAlert(null);
+            ref
+                .read(visionSelectedDetectionProvider.notifier)
+                .select(focusedDetection);
+          });
+        }
+
+        if (selectedDetection case final selected?) {
+          return _DetectionDetailView(detection: selected);
         }
 
         final filtered = _filter == 'all'
@@ -75,7 +92,12 @@ class _VisionScreenState extends ConsumerState<VisionScreen> {
                     const _EmptyListMessage()
                   else
                     for (final item in filtered.take(8))
-                      _DetectionHistoryTile(item),
+                      _DetectionHistoryTile(
+                        item,
+                        onTap: () => ref
+                            .read(visionSelectedDetectionProvider.notifier)
+                            .select(item),
+                      ),
                 ],
               ),
             ),
@@ -298,66 +320,281 @@ class _FilterControl extends StatelessWidget {
 }
 
 class _DetectionHistoryTile extends StatelessWidget {
-  const _DetectionHistoryTile(this.item);
+  const _DetectionHistoryTile(this.item, {this.onTap});
 
   final Detection item;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final color = _detectionColor(item.type);
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(9),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 48,
-            height: 42,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(10),
+          child: Ink(
+            padding: const EdgeInsets.all(9),
             decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: color.withValues(alpha: 0.18)),
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
             ),
-            child: Icon(_detectionIcon(item.type), color: color, size: 22),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
               children: [
-                Text(
-                  item.className,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w900,
-                    color: AppTheme.textStrong,
+                Container(
+                  width: 48,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: color.withValues(alpha: 0.18)),
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                  child: Icon(
+                    _detectionIcon(item.type),
+                    color: color,
+                    size: 22,
+                  ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  '${DateFormat('dd MMM HH:mm').format(item.detectedAt)} - ${item.cameraId}',
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppTheme.textMuted,
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.className,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w900,
+                          color: AppTheme.textStrong,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${DateFormat('dd MMM HH:mm').format(item.detectedAt)} - ${item.cameraId}',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: AppTheme.textMuted,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(width: 8),
+                StatusChip(
+                  label: '${(item.confidence * 100).round()}%',
+                  color: color,
+                ),
+                const SizedBox(width: 4),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppTheme.textMuted,
+                  size: 20,
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 8),
-          StatusChip(
-            label: '${(item.confidence * 100).round()}%',
-            color: color,
+        ),
+      ),
+    );
+  }
+}
+
+class _DetectionDetailView extends StatelessWidget {
+  const _DetectionDetailView({required this.detection});
+
+  final Detection detection;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _detectionColor(detection.type);
+    final date = DateFormat('dd MMMM yyyy, HH:mm').format(detection.detectedAt);
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+      children: [
+        _CameraEvidence(detection: detection),
+        const SizedBox(height: 12),
+        SectionCard(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: color.withValues(alpha: 0.18)),
+                    ),
+                    child: Icon(_detectionIcon(detection.type), color: color),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          detection.className,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w900,
+                            color: AppTheme.textStrong,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          detection.image.isEmpty ? '-' : detection.image,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppTheme.textMuted,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              _DetectionDataGrid(
+                items: [
+                  _DetectionDataItem(
+                    icon: Icons.category_rounded,
+                    label: 'Tipe',
+                    value: detection.type.toUpperCase(),
+                    color: color,
+                  ),
+                  _DetectionDataItem(
+                    icon: Icons.percent_rounded,
+                    label: 'Confidence',
+                    value: '${(detection.confidence * 100).round()}%',
+                    color: AppTheme.primaryGreen,
+                  ),
+                  _DetectionDataItem(
+                    icon: Icons.videocam_rounded,
+                    label: 'Kamera',
+                    value: detection.cameraId,
+                    color: AppTheme.teal,
+                  ),
+                  _DetectionDataItem(
+                    icon: Icons.schedule_rounded,
+                    label: 'Waktu',
+                    value: date,
+                    color: AppTheme.infoBlue,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DetectionDataGrid extends StatelessWidget {
+  const _DetectionDataGrid({required this.items});
+
+  final List<_DetectionDataItem> items;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final compact = constraints.maxWidth < 360;
+        return GridView.builder(
+          itemCount: items.length,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 8,
+            mainAxisSpacing: 8,
+            childAspectRatio: compact ? 1.22 : 1.42,
+          ),
+          itemBuilder: (context, index) =>
+              _DetectionDataTile(item: items[index]),
+        );
+      },
+    );
+  }
+}
+
+class _DetectionDataItem {
+  const _DetectionDataItem({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color color;
+}
+
+class _DetectionDataTile extends StatelessWidget {
+  const _DetectionDataTile({required this.item});
+
+  final _DetectionDataItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    return SectionCard(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: item.color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(item.icon, color: item.color, size: 17),
+              ),
+            ],
+          ),
+          const SizedBox(height: 7),
+          Text(
+            item.label,
+            style: const TextStyle(
+              fontSize: 11,
+              color: AppTheme.textMuted,
+              fontWeight: FontWeight.w600,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              item.value,
+              style: const TextStyle(
+                fontSize: 15,
+                color: AppTheme.textStrong,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
           ),
         ],
       ),
@@ -524,4 +761,34 @@ IconData _detectionIcon(String type) {
     'pest' => Icons.bug_report_rounded,
     _ => Icons.help_rounded,
   };
+}
+
+Detection _findDetectionForAlert(
+  List<Detection> detections,
+  SystemAlert alert,
+) {
+  final alertText = '${alert.title} ${alert.message}'.toLowerCase();
+  var bestDetection = detections.first;
+  var bestScore = -1;
+
+  for (final detection in detections) {
+    final className = detection.className.toLowerCase();
+    final cameraId = detection.cameraId.toLowerCase();
+    final type = detection.type.toLowerCase();
+    var score = 0;
+
+    if (alertText.contains(className)) score += 4;
+    if (alertText.contains(cameraId)) score += 3;
+    if (alertText.contains(type)) score += 2;
+    for (final token in className.split(RegExp(r'\s+'))) {
+      if (token.length > 2 && alertText.contains(token)) score++;
+    }
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestDetection = detection;
+    }
+  }
+
+  return bestDetection;
 }

@@ -6,7 +6,6 @@ import '../../core/theme/app_theme.dart';
 import '../../core/api/api_providers.dart';
 import '../../shared/models/nursery_models.dart';
 import '../../shared/widgets/section_card.dart';
-import '../../shared/widgets/status_chip.dart';
 import '../dashboard/dashboard_controller.dart';
 
 void showAlertsBottomSheet(
@@ -92,6 +91,19 @@ class AlertsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final dashboard = ref.watch(dashboardProvider);
 
+    Future<void> markAllRead(List<SystemAlert> alerts) async {
+      final unreadIds = [
+        for (final alert in alerts)
+          if (!alert.isRead && alert.id != null) alert.id!,
+      ];
+      if (unreadIds.isEmpty) return;
+      final repository = ref.read(nurseryRepositoryProvider);
+      for (final id in unreadIds) {
+        await repository.markAlertRead(id);
+      }
+      ref.invalidate(dashboardProvider);
+    }
+
     return dashboard.when(
       data: (snapshot) {
         final alerts = snapshot.alerts;
@@ -106,70 +118,91 @@ class AlertsScreen extends ConsumerWidget {
             SectionCard(
               padding: const EdgeInsets.all(14),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: AppTheme.primaryGreen.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(10),
+                  if (isEmbedded) ...[
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryGreen.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(
+                            Icons.notifications_active_rounded,
+                            color: AppTheme.primaryGreen,
+                            size: 20,
+                          ),
                         ),
-                        child: const Icon(
-                          Icons.notifications_active_rounded,
-                          color: AppTheme.primaryGreen,
-                          size: 20,
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Notifikasi',
+                                style: Theme.of(context).textTheme.titleMedium
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.w900,
+                                      color: AppTheme.textStrong,
+                                    ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              Text(
+                                '$unreadCount belum dibaca dari ${alerts.length} data',
+                                style: const TextStyle(
+                                  color: AppTheme.textMuted,
+                                  fontSize: 11,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          constraints: const BoxConstraints.tightFor(
+                            width: 36,
+                            height: 36,
+                          ),
+                          padding: EdgeInsets.zero,
+                          tooltip: 'Tandai semua dibaca',
+                          onPressed: unreadCount == 0
+                              ? null
+                              : () => markAllRead(alerts),
+                          icon: const Icon(
+                            Icons.mark_email_read_rounded,
+                            size: 20,
+                          ),
+                        ),
+                        IconButton(
+                          constraints: const BoxConstraints.tightFor(
+                            width: 36,
+                            height: 36,
+                          ),
+                          padding: EdgeInsets.zero,
+                          tooltip: 'Tutup',
+                          onPressed: () => Navigator.pop(context),
+                          icon: const Icon(Icons.close_rounded, size: 20),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                  ] else ...[
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Text(
+                        '$unreadCount belum dibaca dari ${alerts.length} data',
+                        style: const TextStyle(
+                          color: AppTheme.textMuted,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Notifikasi',
-                              style: Theme.of(context).textTheme.titleMedium
-                                  ?.copyWith(
-                                    fontWeight: FontWeight.w900,
-                                    color: AppTheme.textStrong,
-                                  ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            Text(
-                              '$unreadCount belum dibaca dari ${alerts.length} data',
-                              style: const TextStyle(
-                                color: AppTheme.textMuted,
-                                fontSize: 11,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                        ),
-                      ),
-                      if (isEmbedded)
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            TextButton(
-                              onPressed: onOpenAll,
-                              child: const Text('Lihat semua'),
-                            ),
-                            IconButton(
-                              constraints: const BoxConstraints.tightFor(
-                                width: 36,
-                                height: 36,
-                              ),
-                              padding: EdgeInsets.zero,
-                              onPressed: () => Navigator.pop(context),
-                              icon: const Icon(Icons.close_rounded, size: 20),
-                            ),
-                          ],
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
+                    ),
+                  ],
                   if (alerts.isEmpty)
                     const _EmptyAlertState()
                   else
@@ -183,6 +216,36 @@ class AlertsScreen extends ConsumerWidget {
                         color: AppTheme.textMuted,
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                  if (isEmbedded) ...[
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: TextButton(
+                        onPressed: onOpenAll,
+                        child: const Text(
+                          'Lihat semua',
+                          style: TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                    ),
+                  ] else if (unreadCount > 0) ...[
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () => markAllRead(alerts),
+                        icon: const Icon(Icons.mark_email_read_rounded),
+                        label: const Text('Tandai semua dibaca'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppTheme.primaryGreen,
+                          side: const BorderSide(color: AppTheme.cardBorder),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -228,103 +291,104 @@ class _AlertCard extends ConsumerWidget {
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: SectionCard(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        color: alert.isRead ? Colors.white : AppTheme.mintLight,
-        borderColor: alert.isRead
-            ? const Color(0xFFE2E8F0)
-            : AppTheme.primaryGreen.withValues(alpha: 0.28),
-        onTap: () async {
-          await _markRead(ref);
-          onOpenTarget?.call(alert);
-        },
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(
-                isCritical ? Icons.error_rounded : Icons.warning_amber_rounded,
-                color: color,
-                size: 18,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () async {
+            await _markRead(ref);
+            onOpenTarget?.call(alert);
+          },
+          borderRadius: BorderRadius.circular(10),
+          child: Ink(
+            padding: const EdgeInsets.all(9),
+            decoration: BoxDecoration(
+              color: alert.isRead
+                  ? const Color(0xFFF8FAFC)
+                  : AppTheme.mintLight,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: alert.isRead
+                    ? const Color(0xFFE2E8F0)
+                    : AppTheme.primaryGreen.withValues(alpha: 0.28),
               ),
             ),
-            const SizedBox(width: 9),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+            child: Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: color.withValues(alpha: 0.18)),
+                  ),
+                  child: Icon(
+                    isCritical
+                        ? Icons.error_rounded
+                        : Icons.warning_amber_rounded,
+                    color: color,
+                    size: 18,
+                  ),
+                ),
+                const SizedBox(width: 9),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: Text(
-                          alert.title,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w900,
-                            fontSize: 13,
-                            color: AppTheme.textStrong,
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              alert.title,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w900,
+                                fontSize: 13,
+                                color: AppTheme.textStrong,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                          const SizedBox(width: 8),
+                          Text(
+                            DateFormat.Hm().format(alert.createdAt),
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Color(0xFF94A3B8),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(height: 2),
                       Text(
-                        DateFormat.Hm().format(alert.createdAt),
+                        alert.message,
                         style: const TextStyle(
                           fontSize: 11,
-                          color: Color(0xFF94A3B8),
-                          fontWeight: FontWeight.w500,
+                          color: AppTheme.textMuted,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
-                  const SizedBox(height: 3),
-                  Text(
-                    alert.message,
-                    style: const TextStyle(
-                      fontSize: 11.5,
-                      color: Color(0xFF475569),
-                      height: 1.25,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      StatusChip(label: alert.level, color: color),
-                      const SizedBox(width: 8),
-                      StatusChip(
-                        label: alert.isRead ? 'DIBACA' : 'BARU',
-                        color: alert.isRead
-                            ? AppTheme.textMuted
-                            : AppTheme.primaryGreen,
-                      ),
-                      const Spacer(),
-                      TextButton(
-                        onPressed: () async {
-                          await _markRead(ref);
-                          onOpenTarget?.call(alert);
-                        },
-                        style: TextButton.styleFrom(
-                          foregroundColor: color,
-                          visualDensity: VisualDensity.compact,
-                          padding: const EdgeInsets.symmetric(horizontal: 6),
-                        ),
-                        child: Text(isCritical ? 'Cek' : 'Pantau'),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+                ),
+                const SizedBox(width: 6),
+                Icon(
+                  alert.isRead
+                      ? Icons.mark_email_read_rounded
+                      : Icons.fiber_manual_record_rounded,
+                  color: alert.isRead ? AppTheme.textMuted : color,
+                  size: alert.isRead ? 17 : 11,
+                ),
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  color: AppTheme.textMuted,
+                  size: 18,
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

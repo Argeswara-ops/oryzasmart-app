@@ -32,6 +32,9 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   void _openAlertTarget(SystemAlert alert) {
     final target = _targetIndexForAlert(alert);
+    if (target == 2) {
+      ref.read(visionFocusAlertProvider.notifier).setAlert(alert);
+    }
     setState(() {
       _index = target;
       _showNotifications = false;
@@ -56,6 +59,9 @@ class _AppShellState extends ConsumerState<AppShell> {
   @override
   Widget build(BuildContext context) {
     final dashboardState = ref.watch(dashboardProvider);
+    final selectedDetection = ref.watch(visionSelectedDetectionProvider);
+    final isVisionDetail =
+        !_showNotifications && _index == 2 && selectedDetection != null;
     final alertCount = dashboardState.maybeWhen(
       data: (data) => data.unreadAlerts,
       orElse: () => 0,
@@ -64,6 +70,8 @@ class _AppShellState extends ConsumerState<AppShell> {
     PreferredSizeWidget buildAppBar() {
       final titleWidget = _showNotifications
           ? const _AppBarTitle(title: 'Notifikasi')
+          : isVisionDetail
+          ? const _AppBarTitle(title: 'Detail Deteksi')
           : switch (_index) {
               0 => const _BrandTitle(),
               1 => const _AppBarTitle(title: 'Device'),
@@ -79,74 +87,84 @@ class _AppShellState extends ConsumerState<AppShell> {
         elevation: 0,
         scrolledUnderElevation: 0,
         titleSpacing: 16,
-        leading: _showNotifications
+        leading: _showNotifications || isVisionDetail
             ? IconButton(
                 tooltip: 'Kembali',
                 icon: const Icon(Icons.arrow_back_rounded),
-                onPressed: () => setState(() => _showNotifications = false),
+                onPressed: () {
+                  if (isVisionDetail) {
+                    ref
+                        .read(visionSelectedDetectionProvider.notifier)
+                        .select(null);
+                    return;
+                  }
+                  setState(() => _showNotifications = false);
+                },
               )
             : null,
         title: titleWidget,
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                IconButton(
-                  constraints: const BoxConstraints.tightFor(
-                    width: 38,
-                    height: 38,
-                  ),
-                  padding: EdgeInsets.zero,
-                  style: IconButton.styleFrom(
-                    backgroundColor: const Color(0xFFF8FAFC),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(11),
-                      side: const BorderSide(color: AppTheme.cardBorder),
-                    ),
-                  ),
-                  icon: const Icon(
-                    Icons.notifications_none_rounded,
-                    color: Color(0xFF334155),
-                    size: 21,
-                  ),
-                  tooltip: 'Notifikasi',
-                  onPressed: () => showAlertsBottomSheet(
-                    context,
-                    onOpenAll: _openNotificationsPage,
-                    onAlertSelected: _openAlertTarget,
+        actions: _showNotifications || isVisionDetail
+            ? null
+            : [
+                Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      IconButton(
+                        constraints: const BoxConstraints.tightFor(
+                          width: 38,
+                          height: 38,
+                        ),
+                        padding: EdgeInsets.zero,
+                        style: IconButton.styleFrom(
+                          backgroundColor: const Color(0xFFF8FAFC),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(11),
+                            side: const BorderSide(color: AppTheme.cardBorder),
+                          ),
+                        ),
+                        icon: const Icon(
+                          Icons.notifications_none_rounded,
+                          color: Color(0xFF334155),
+                          size: 21,
+                        ),
+                        tooltip: 'Notifikasi',
+                        onPressed: () => showAlertsBottomSheet(
+                          context,
+                          onOpenAll: _openNotificationsPage,
+                          onAlertSelected: _openAlertTarget,
+                        ),
+                      ),
+                      if (alertCount > 0)
+                        Positioned(
+                          right: -1,
+                          top: -1,
+                          child: Container(
+                            padding: const EdgeInsets.all(3),
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFEF4444),
+                              shape: BoxShape.circle,
+                            ),
+                            constraints: const BoxConstraints(
+                              minWidth: 15,
+                              minHeight: 15,
+                            ),
+                            child: Text(
+                              '$alertCount',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                 ),
-                if (alertCount > 0)
-                  Positioned(
-                    right: -1,
-                    top: -1,
-                    child: Container(
-                      padding: const EdgeInsets.all(3),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFEF4444),
-                        shape: BoxShape.circle,
-                      ),
-                      constraints: const BoxConstraints(
-                        minWidth: 15,
-                        minHeight: 15,
-                      ),
-                      child: Text(
-                        '$alertCount',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 9,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  ),
               ],
-            ),
-          ),
-        ],
       );
     }
 
@@ -183,6 +201,7 @@ class _AppShellState extends ConsumerState<AppShell> {
           height: 58,
           selectedIndex: _index,
           onDestinationSelected: (value) => setState(() {
+            ref.read(visionSelectedDetectionProvider.notifier).select(null);
             _index = value;
             _showNotifications = false;
           }),

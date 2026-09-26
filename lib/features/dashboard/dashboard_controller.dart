@@ -27,6 +27,16 @@ final detectionsProvider = StreamProvider<List<Detection>>((ref) {
   return _poll(repository.getDetections, _historyRefreshInterval);
 });
 
+final visionFocusAlertProvider =
+    NotifierProvider<VisionFocusAlertController, SystemAlert?>(
+      VisionFocusAlertController.new,
+    );
+
+final visionSelectedDetectionProvider =
+    NotifierProvider<VisionSelectedDetectionController, Detection?>(
+      VisionSelectedDetectionController.new,
+    );
+
 final fanControllerProvider = AsyncNotifierProvider<FanController, FanState>(
   FanController.new,
 );
@@ -64,6 +74,24 @@ class FanController extends AsyncNotifier<FanState> {
     );
     state = result.hasError && previous != null ? AsyncData(previous) : result;
     ref.invalidate(dashboardProvider);
+  }
+}
+
+class VisionFocusAlertController extends Notifier<SystemAlert?> {
+  @override
+  SystemAlert? build() => null;
+
+  void setAlert(SystemAlert? alert) {
+    state = alert;
+  }
+}
+
+class VisionSelectedDetectionController extends Notifier<Detection?> {
+  @override
+  Detection? build() => null;
+
+  void select(Detection? detection) {
+    state = detection;
   }
 }
 
