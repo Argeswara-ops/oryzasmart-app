@@ -240,9 +240,16 @@ class _FanDeviceCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final fanState = ref
-        .watch(fanControllerProvider)
-        .maybeWhen(data: (value) => value, orElse: () => fan);
+    ref.listen(fanControlErrorProvider, (previous, next) {
+      if (next != null && previous != next) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Kontrol kipas gagal: $next')));
+      }
+    });
+    final fanAsync = ref.watch(fanControllerProvider);
+    final fanState = fanAsync.value ?? fan;
+    final isBusy = ref.watch(fanControlBusyProvider);
     final isOn = fanState.status == 'ON';
     final color = isOn ? AppTheme.primaryGreen : AppTheme.textMuted;
 
@@ -284,12 +291,25 @@ class _FanDeviceCard extends ConsumerWidget {
           Switch(
             value: isOn,
             activeThumbColor: AppTheme.primaryGreen,
-            onChanged: (value) {
-              ref
-                  .read(fanControllerProvider.notifier)
-                  .setStatus(value ? 'ON' : 'OFF');
-            },
+            onChanged: isBusy
+                ? null
+                : (value) {
+                    ref
+                        .read(fanControllerProvider.notifier)
+                        .setStatus(value ? 'ON' : 'OFF');
+                  },
           ),
+          if (isBusy) ...[
+            const SizedBox(width: 8),
+            const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: AppTheme.primaryGreen,
+              ),
+            ),
+          ],
         ],
       ),
     );

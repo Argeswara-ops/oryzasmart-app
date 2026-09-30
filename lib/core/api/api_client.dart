@@ -21,10 +21,7 @@ class ApiClient {
     baseUrl: AppConfig.apiBaseUrl,
     connectTimeout: const Duration(seconds: 8),
     receiveTimeout: const Duration(seconds: 8),
-    headers: {
-      'Accept': 'application/json',
-      'Content-Type': 'application/json',
-    },
+    headers: {'Accept': 'application/json', 'Content-Type': 'application/json'},
   );
 
   final Dio _dio;
@@ -46,6 +43,7 @@ class ApiClient {
 
   Map<String, dynamic> dataEnvelope(Response<Map<String, dynamic>> response) {
     final body = response.data ?? <String, dynamic>{};
+    _throwWhenUnsuccessful(body);
     final payload = body['data'];
     return payload is Map<String, dynamic> ? payload : body;
   }
@@ -54,6 +52,7 @@ class ApiClient {
     final body = response.data;
     if (body is List) return body;
     if (body is Map<String, dynamic>) {
+      _throwWhenUnsuccessful(body);
       final data = body['data'];
       if (data is List) return data;
       if (data is Map<String, dynamic>) {
@@ -65,4 +64,19 @@ class ApiClient {
     }
     return const [];
   }
+
+  void _throwWhenUnsuccessful(Map<String, dynamic> body) {
+    if (body['success'] == false) {
+      throw ApiException('${body['message'] ?? 'Request API gagal.'}');
+    }
+  }
+}
+
+class ApiException implements Exception {
+  const ApiException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
 }

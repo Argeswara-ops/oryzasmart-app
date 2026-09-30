@@ -12,6 +12,7 @@ class AppConfig {
     }
   }
 
-  static const mqttSensorTopic = 'rice-nursery/sensors';
-  static const mqttFanCommandTopic = 'rice-nursery/actuator/fan/command';
+  static const deviceId = 'ESP32-01';
+  static const dataFlow =
+      'Flutter -> Laravel API -> MQTT HiveMQ -> Wokwi ESP32';
 }

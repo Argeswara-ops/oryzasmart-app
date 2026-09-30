@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/api/api_client.dart';
@@ -13,6 +14,7 @@ class NurseryRepository {
   static const _userNameKey = 'oryza_auth_user_name';
   static const _userEmailKey = 'oryza_auth_user_email';
   static const _userRoleKey = 'oryza_auth_user_role';
+  static const _secureStorage = FlutterSecureStorage();
 
   final ApiClient _client;
   FanState _fan = const FanState(status: 'ON', mode: 'AUTO');
@@ -41,6 +43,8 @@ class NurseryRepository {
       return user;
     } on DioException catch (error) {
       throw LoginException.fromDio(error);
+    } on ApiException catch (error) {
+      throw LoginException(error.message);
     }
   }
 
@@ -58,12 +62,17 @@ class NurseryRepository {
   Future<AuthUser?> restoreSession() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString(_tokenKey);
+      final legacyToken = prefs.getString(_tokenKey);
+      final token = await _secureStorage.read(key: _tokenKey) ?? legacyToken;
       final email = prefs.getString(_userEmailKey);
       if (token == null || token.isEmpty || email == null || email.isEmpty) {
         return null;
       }
 
+      if (legacyToken != null && legacyToken.isNotEmpty) {
+        await _secureStorage.write(key: _tokenKey, value: legacyToken);
+        await prefs.remove(_tokenKey);
+      }
       _client.setToken(token);
       return AuthUser(
         id: prefs.getInt(_userIdKey) ?? 0,
@@ -77,88 +86,76 @@ class NurseryRepository {
   }
 
   Future<DashboardSnapshot> getDashboard() async {
-    try {
-      final response = await _client.dio.get<Map<String, dynamic>>(
-        '/dashboard',
-      );
-      final data = _client.dataEnvelope(response);
-      if (data.isEmpty) return _mockDashboard();
-
-      final fallback = _mockDashboard();
-      final alerts = _applyReadState(
-        _alertsFrom(data['alerts'], fallback.alerts),
-      );
-      final localUnreadAlerts = alerts.where((alert) => !alert.isRead).length;
-      final serverUnreadAlerts = _toInt(data['unread_alerts']);
-      final unreadAlerts = serverUnreadAlerts > localUnreadAlerts
-          ? (serverUnreadAlerts - _readAlertIds.length).clamp(0, 999)
-          : localUnreadAlerts;
-
-      return DashboardSnapshot(
-        device: DeviceStatus.fromJson(
-          _mapOf(data['device']),
-          fallbackCode: 'ESP32-01',
-          fallbackName: 'Nursery Controller',
-          fallbackStatus: data['device_status']?.toString(),
-        ),
-        camera: DeviceStatus.fromJson(
-          _mapOf(data['camera']),
-          fallbackCode: 'CAM-01',
-          fallbackName: 'Camera 01',
-          fallbackStatus: 'ONLINE',
-        ),
-        sensor: SensorReading.fromJson(
-          _mapOf(data['sensors'] ?? data['sensor'] ?? data['latest_sensor']),
-        ),
-        detection: Detection.fromJson(
-          _mapOf(data['latest_detection'] ?? data['detection']),
-        ),
-        fan: FanState.fromJson(_mapOf(data['fan'])),
-        alerts: alerts,
-        recommendation: data['recommendation'] is Map<String, dynamic>
-            ? Recommendation.fromJson(
-                data['recommendation'] as Map<String, dynamic>,
-              )
-            : _recommendationFromStatus(
-                '${data['system_status'] ?? 'NORMAL'}',
-                fallback.recommendation,
-              ),
-        systemStatus: '${data['system_status'] ?? 'NORMAL'}',
-        unreadAlerts: unreadAlerts,
-      );
-    } on DioException {
-      return _mockDashboard();
+    final response = await _client.dio.get<Map<String, dynamic>>('/dashboard');
+    final data = _client.dataEnvelope(response);
+    if (data.isEmpty) {
+      throw const ApiException('Response dashboard Laravel kosong.');
     }
+
+    final fallback = _mockDashboard();
+    final alerts = _applyReadState(
+      _alertsFrom(data['alerts'], fallback.alerts),
+    );
+    final localUnreadAlerts = alerts.where((alert) => !alert.isRead).length;
+    final serverUnreadAlerts = _toInt(data['unread_alerts']);
+    final unreadAlerts = serverUnreadAlerts > localUnreadAlerts
+        ? (serverUnreadAlerts - _readAlertIds.length).clamp(0, 999)
+        : localUnreadAlerts;
+
+    return DashboardSnapshot(
+      device: DeviceStatus.fromJson(
+        _mapOf(data['device']),
+        fallbackCode: AppConfig.deviceId,
+        fallbackName: 'Nursery Controller',
+        fallbackStatus: data['device_status']?.toString(),
+      ),
+      camera: DeviceStatus.fromJson(
+        _mapOf(data['camera']),
+        fallbackCode: 'CAM-01',
+        fallbackName: 'Camera 01',
+        fallbackStatus: 'ONLINE',
+      ),
+      sensor: SensorReading.fromJson(
+        _mapOf(data['sensors'] ?? data['sensor'] ?? data['latest_sensor']),
+      ),
+      detection: Detection.fromJson(
+        _mapOf(data['latest_detection'] ?? data['detection']),
+      ),
+      fan: FanState.fromJson(_mapOf(data['fan'])),
+      alerts: alerts,
+      recommendation: data['recommendation'] is Map<String, dynamic>
+          ? Recommendation.fromJson(
+              data['recommendation'] as Map<String, dynamic>,
+            )
+          : _recommendationFromStatus(
+              '${data['system_status'] ?? 'NORMAL'}',
+              fallback.recommendation,
+            ),
+      systemStatus: '${data['system_status'] ?? 'NORMAL'}',
+      unreadAlerts: unreadAlerts,
+    );
   }
 
-  Future<List<SensorReading>> getSensorHistory({String range = '7days'}) async {
-    try {
-      final response = await _client.dio.get<dynamic>(
-        '/sensors/history',
-        queryParameters: {'range': range},
-      );
-      final body = response.data;
-      final items = body is Map<String, dynamic>
-          ? _seriesFromHistory(body)
-          : _client.listEnvelope(response);
-      return items
-          .whereType<Map<String, dynamic>>()
-          .map(SensorReading.fromJson)
-          .toList();
-    } on DioException {
-      return _mockSensorHistory();
-    }
+  Future<List<SensorReading>> getSensorHistory({String range = 'today'}) async {
+    final response = await _client.dio.get<dynamic>(
+      '/sensors/history',
+      queryParameters: {'range': range},
+    );
+    final body = response.data;
+    final items = body is Map<String, dynamic>
+        ? _seriesFromHistory(body)
+        : _client.listEnvelope(response);
+    return items
+        .whereType<Map<String, dynamic>>()
+        .map(SensorReading.fromJson)
+        .toList();
   }
 
   Future<SensorReading> getLatestSensor() async {
-    try {
-      final response = await _client.dio.get<Map<String, dynamic>>(
-        '/sensors/latest',
-      );
-      return SensorReading.fromJson(_client.dataEnvelope(response));
-    } on DioException {
-      return _mockDashboard().sensor;
-    }
+    final response = await _client.dio.get<Map<String, dynamic>>(
+      '/sensors/latest',
+    );
+    return SensorReading.fromJson(_client.dataEnvelope(response));
   }
 
   Future<List<DeviceStatus>> getDevices() async {
@@ -259,7 +256,8 @@ class NurseryRepository {
     required AuthUser user,
   }) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_tokenKey, token);
+    await _secureStorage.write(key: _tokenKey, value: token);
+    await prefs.remove(_tokenKey);
     await prefs.setInt(_userIdKey, user.id);
     await prefs.setString(_userNameKey, user.name);
     await prefs.setString(_userEmailKey, user.email);
@@ -268,6 +266,7 @@ class NurseryRepository {
 
   Future<void> _clearSession() async {
     final prefs = await SharedPreferences.getInstance();
+    await _secureStorage.delete(key: _tokenKey);
     await prefs.remove(_tokenKey);
     await prefs.remove(_userIdKey);
     await prefs.remove(_userNameKey);
@@ -308,12 +307,12 @@ class NurseryRepository {
       _fan = FanState.fromJson(_client.dataEnvelope(response));
       return _fan;
     } on DioException {
-      return _fan;
+      rethrow;
     }
   }
 
   Future<FanState> setFanStatus(String status) async {
-    return _controlFan(command: status, mode: _fan.mode);
+    return _controlFan(command: status, mode: 'MANUAL');
   }
 
   Future<FanState> setFanMode(String mode) async {
@@ -361,21 +360,30 @@ class NurseryRepository {
     required String mode,
   }) async {
     try {
+      final normalizedCommand = command.toUpperCase();
+      final normalizedMode = mode.toUpperCase();
+      final isAuto = normalizedCommand == 'AUTO' || normalizedMode == 'AUTO';
+      final payload = <String, dynamic>{
+        'device_id': AppConfig.deviceId,
+        'command': isAuto ? 'AUTO' : normalizedCommand,
+        if (!isAuto) 'mode': 'MANUAL',
+      };
       final response = await _client.dio.post<Map<String, dynamic>>(
         '/actuators/fan/control',
-        data: {'device_id': 'ESP32-01', 'command': command, 'mode': mode},
+        data: payload,
       );
       final data = _client.dataEnvelope(response);
-      _fan = data.isEmpty
-          ? _fan.copyWith(status: command, mode: mode)
-          : FanState.fromJson(data);
+      _fan = data.isEmpty ? await getFanStatus() : FanState.fromJson(data);
     } on DioException {
-      _fan = _fan.copyWith(status: command, mode: mode);
+      rethrow;
     }
     return _fan;
   }
 
   List<dynamic> _seriesFromHistory(Map<String, dynamic> body) {
+    if (body['success'] == false) {
+      throw ApiException('${body['message'] ?? 'Request API gagal.'}');
+    }
     final data = body['data'];
     if (data is Map<String, dynamic>) {
       final series = data['series'];
@@ -499,24 +507,6 @@ class NurseryRepository {
       systemStatus: 'WARNING',
       unreadAlerts: alerts.where((alert) => !alert.isRead).length,
     );
-  }
-
-  List<SensorReading> _mockSensorHistory() {
-    final now = DateTime.now();
-    return List.generate(12, (index) {
-      final offset = 11 - index;
-      return SensorReading(
-        deviceId: 'ESP32-01',
-        temperature: 27.8 + (index % 5) * 0.6,
-        humidity: 76 + (index % 4) * 2,
-        nitrogen: 38 + (index % 3),
-        phosphorus: 21 + (index % 2),
-        potassium: 30 + (index % 4),
-        light: 640 + index * 12,
-        ultrasonic: 16 - (index % 4),
-        createdAt: now.subtract(Duration(hours: offset * 2)),
-      );
-    });
   }
 
   List<Detection> _mockDetections() {

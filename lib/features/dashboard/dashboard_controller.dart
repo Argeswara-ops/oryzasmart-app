@@ -41,6 +41,14 @@ final fanControllerProvider = AsyncNotifierProvider<FanController, FanState>(
   FanController.new,
 );
 
+final fanControlBusyProvider = NotifierProvider<FanControlBusyController, bool>(
+  FanControlBusyController.new,
+);
+final fanControlErrorProvider =
+    NotifierProvider<FanControlErrorController, Object?>(
+      FanControlErrorController.new,
+    );
+
 class FanController extends AsyncNotifier<FanState> {
   @override
   Future<FanState> build() async {
@@ -53,27 +61,60 @@ class FanController extends AsyncNotifier<FanState> {
     final optimistic =
         (previous ?? const FanState(status: 'OFF', mode: 'MANUAL')).copyWith(
           status: status,
+          mode: 'MANUAL',
         );
+    ref.read(fanControlErrorProvider.notifier).setError(null);
+    ref.read(fanControlBusyProvider.notifier).setBusy(true);
     state = AsyncData(optimistic);
 
     final result = await AsyncValue.guard(
       () => ref.read(nurseryRepositoryProvider).setFanStatus(status),
     );
     state = result.hasError && previous != null ? AsyncData(previous) : result;
-    ref.invalidate(dashboardProvider);
+    ref.read(fanControlBusyProvider.notifier).setBusy(false);
+    if (!result.hasError) {
+      ref.invalidate(dashboardProvider);
+    } else {
+      ref.read(fanControlErrorProvider.notifier).setError(result.error);
+    }
   }
 
   Future<void> setMode(String mode) async {
     final previous = state.hasValue ? state.value : null;
     final optimistic = (previous ?? const FanState(status: 'OFF', mode: 'AUTO'))
         .copyWith(mode: mode);
+    ref.read(fanControlErrorProvider.notifier).setError(null);
+    ref.read(fanControlBusyProvider.notifier).setBusy(true);
     state = AsyncData(optimistic);
 
     final result = await AsyncValue.guard(
       () => ref.read(nurseryRepositoryProvider).setFanMode(mode),
     );
     state = result.hasError && previous != null ? AsyncData(previous) : result;
-    ref.invalidate(dashboardProvider);
+    ref.read(fanControlBusyProvider.notifier).setBusy(false);
+    if (!result.hasError) {
+      ref.invalidate(dashboardProvider);
+    } else {
+      ref.read(fanControlErrorProvider.notifier).setError(result.error);
+    }
+  }
+}
+
+class FanControlBusyController extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void setBusy(bool value) {
+    state = value;
+  }
+}
+
+class FanControlErrorController extends Notifier<Object?> {
+  @override
+  Object? build() => null;
+
+  void setError(Object? error) {
+    state = error;
   }
 }
 

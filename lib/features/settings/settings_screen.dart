@@ -109,15 +109,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             children: [
               _ConfigField(title: 'Backend API', value: AppConfig.apiBaseUrl),
               const SizedBox(height: 10),
-              const _ConfigField(
-                title: 'MQTT Sensor',
-                value: AppConfig.mqttSensorTopic,
-              ),
+              const _ConfigField(title: 'Device ID', value: AppConfig.deviceId),
               const SizedBox(height: 10),
-              const _ConfigField(
-                title: 'MQTT Kipas',
-                value: AppConfig.mqttFanCommandTopic,
-              ),
+              const _ConfigField(title: 'Alur Data', value: AppConfig.dataFlow),
             ],
           ),
         ),

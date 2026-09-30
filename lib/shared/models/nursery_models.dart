@@ -138,6 +138,10 @@ class FanState {
   }
 
   factory FanState.fromJson(Map<String, dynamic> json) {
+    final nested = json['fan'];
+    if (nested is Map<String, dynamic>) {
+      return FanState.fromJson(nested);
+    }
     return FanState(
       status: _normalizeStatus(json['status'] ?? 'OFF'),
       mode: _normalizeStatus(json['mode'] ?? 'MANUAL'),
