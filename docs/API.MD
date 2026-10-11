@@ -18,7 +18,7 @@ http://10.0.2.2:8000/api
 
 ## Auth
 
-Semua endpoint selain login dan Vision callback memakai bearer token Sanctum.
+Semua endpoint selain login dan Vision callback memakai bearer token Sanctum. Endpoint prediksi padi dari Flutter juga wajib memakai bearer token.
 
 Header:
 
@@ -27,6 +27,8 @@ Authorization: Bearer {token}
 Accept: application/json
 Content-Type: application/json
 ```
+
+Untuk upload gambar gunakan `multipart/form-data`, bukan JSON.
 
 Login default dari seeder/simulator:
 
@@ -44,6 +46,19 @@ php artisan nursery:simulate
 php artisan nursery:simulate --count=10 --scenario=mixed
 php artisan nursery:simulate --sensor --count=5 --scenario=warning
 php artisan nursery:simulate --detection --count=3 --scenario=critical
+```
+
+Untuk simulasi MQTT seperti perangkat ESP32/Wokwi:
+
+```bash
+php artisan mqtt:simulate-device --device=ESP32-01 --scenario=mixed --count=10 --interval=1
+php artisan mqtt:simulate-device --device=ESP32-01 --scenario=critical --count=10 --interval=1 --fan-status=ON
+```
+
+Listener MQTT:
+
+```bash
+php artisan mqtt:listen
 ```
 
 Scenario:
@@ -131,7 +146,14 @@ Response data:
     "phosphorus": 25,
     "potassium": 35,
     "light": 650,
-    "ultrasonic": 18
+    "light_percent": 65,
+    "uv_index": 2.1,
+    "ultrasonic": 18,
+    "distance_cm": 18,
+    "level_percent": 64,
+    "fan_state": "OFF",
+    "fan_mode": "MANUAL",
+    "recorded_at": "2026-09-24T11:40:21.000000Z"
   },
   "latest_detection": {
     "detection_type": "PEST",
@@ -152,6 +174,27 @@ Response data:
 
 Mengambil data sensor terakhir.
 
+Response `data`:
+
+```json
+{
+  "temperature": 27.2,
+  "humidity": 76,
+  "nitrogen": 45,
+  "phosphorus": 25,
+  "potassium": 35,
+  "light": 650,
+  "light_percent": 65,
+  "uv_index": 2.1,
+  "ultrasonic": 18,
+  "distance_cm": 18,
+  "level_percent": 64,
+  "fan_state": "OFF",
+  "fan_mode": "MANUAL",
+  "recorded_at": "2026-09-24T11:40:21.000000Z"
+}
+```
+
 ### GET `/sensors/history?range=today`
 
 Range yang tersedia:
@@ -169,6 +212,8 @@ range
 summary
 series
 ```
+
+`series[]` berisi field sensor yang sama seperti `/sensors/latest`, ditambah `recorded_at`.
 
 ## Endpoint Threshold
 
@@ -257,9 +302,92 @@ Hasil vision terbaru.
 
 Detail detection.
 
+## Endpoint Prediksi Padi
+
+Endpoint ini dipakai Flutter untuk upload gambar ke Laravel. Laravel akan meneruskan gambar ke Oryza Vision API sebagai multipart field `file` dengan header internal `X-API-Key`.
+
+### POST `/paddy/predict`
+
+Header:
+
+```text
+Authorization: Bearer {token}
+Accept: application/json
+Content-Type: multipart/form-data
+```
+
+Body multipart:
+
+```text
+image: file JPG/JPEG/PNG, max 10 MB
+```
+
+Response sukses:
+
+```json
+{
+  "success": true,
+  "prediction": {
+    "class_id": 3,
+    "class": "blast",
+    "display_name": "Blast",
+    "confidence": 92.74,
+    "status": "high_confidence"
+  }
+}
+```
+
+Jika Oryza Vision API gagal, Laravel mengembalikan status code dari service tersebut:
+
+```json
+{
+  "success": false,
+  "message": "Vision prediction failed",
+  "error": {
+    "success": false,
+    "message": "Invalid image"
+  }
+}
+```
+
+### POST `/paddy/predict/realtime`
+
+Dipakai untuk snapshot kamera berkala. Jangan kirim 30 FPS; gunakan interval sekitar 2 detik.
+
+Header:
+
+```text
+Authorization: Bearer {token}
+Accept: application/json
+Content-Type: multipart/form-data
+```
+
+Body multipart:
+
+```text
+image: snapshot kamera JPG/JPEG/PNG, max 10 MB
+stream_id: string optional, gunakan ID tetap selama halaman kamera aktif
+```
+
+Response mengikuti response dari Oryza Vision API. Contoh:
+
+```json
+{
+  "success": true,
+  "prediction": {
+    "class": "blast",
+    "confidence": 88.5,
+    "status": "medium_confidence"
+  },
+  "stable_prediction": null
+}
+```
+
+Jika `stable_prediction` masih `null`, Flutter boleh menampilkan `prediction` sebagai indikasi sementara dan memberi status menunggu stabil.
+
 ## Endpoint Vision Service
 
-Endpoint ini untuk Python Vision Service, bukan Flutter.
+Endpoint ini untuk Python Vision Service, bukan Flutter. Jangan panggil endpoint ini dari aplikasi mobile.
 
 ### POST `/vision/detections`
 
@@ -342,7 +470,7 @@ Request:
 Allowed value:
 
 ```text
-command: ON, OFF
+command: ON, OFF, AUTO
 mode: AUTO, MANUAL
 ```
 
@@ -387,12 +515,20 @@ php artisan serve
 5. Simpan token dari `data.token`.
 6. Kirim token di header `Authorization` untuk semua request berikutnya.
 7. Halaman dashboard cukup memanggil `/api/dashboard`.
+8. Halaman prediksi penyakit/hama mengirim gambar ke `/api/paddy/predict`.
+9. Halaman kamera realtime mengirim snapshot berkala ke `/api/paddy/predict/realtime`.
 
 ## Catatan Saat IoT dan Vision Real Sudah Ada
 
-Flutter tidak perlu mengganti endpoint. ESP32 dan Vision Python hanya mengganti sumber data yang masuk ke Laravel:
+Flutter tidak perlu mengganti endpoint untuk dashboard, sensor, detection, alert, dan rekomendasi. ESP32 dan Vision Python hanya mengganti sumber data yang masuk ke Laravel:
 
 ```text
 ESP32 -> MQTT -> Laravel -> Database -> Flutter API
 Python Vision -> REST API -> Laravel -> Database -> Flutter API
+```
+
+Untuk prediksi gambar langsung dari aplikasi:
+
+```text
+Flutter -> Laravel API -> Oryza Vision API
 ```

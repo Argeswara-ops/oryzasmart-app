@@ -1,5 +1,8 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
 import '../../core/theme/app_theme.dart';
@@ -17,20 +20,38 @@ class VisionScreen extends ConsumerStatefulWidget {
 
 class _VisionScreenState extends ConsumerState<VisionScreen> {
   String _filter = 'all';
+  final ImagePicker _picker = ImagePicker();
+  XFile? _selectedImage;
+  Uint8List? _selectedImageBytes;
+
+  Future<void> _pickAndPredict(ImageSource source) async {
+    final image = await _picker.pickImage(
+      source: source,
+      imageQuality: 88,
+      maxWidth: 1600,
+    );
+    if (image == null) return;
+
+    final bytes = await image.readAsBytes();
+    if (!mounted) return;
+    setState(() {
+      _selectedImage = image;
+      _selectedImageBytes = bytes;
+    });
+    ref.read(visionPredictionProvider.notifier).clear();
+    await ref.read(visionPredictionProvider.notifier).predict(image);
+  }
 
   @override
   Widget build(BuildContext context) {
     final detections = ref.watch(detectionsProvider);
     final selectedDetection = ref.watch(visionSelectedDetectionProvider);
+    final prediction = ref.watch(visionPredictionProvider);
 
     return detections.when(
       data: (items) {
-        if (items.isEmpty) {
-          return _EmptyVision(onRefresh: () => ref.refresh(detectionsProvider));
-        }
-
         final focusAlert = ref.watch(visionFocusAlertProvider);
-        if (focusAlert != null) {
+        if (focusAlert != null && items.isNotEmpty) {
           final focusedDetection = _findDetectionForAlert(items, focusAlert);
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (!mounted) return;
@@ -53,13 +74,23 @@ class _VisionScreenState extends ConsumerState<VisionScreen> {
         return ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
           children: [
-            _CameraEvidence(detection: latest),
-            const SizedBox(height: 12),
-            _FilterControl(
-              value: _filter,
-              onChanged: (value) => setState(() => _filter = value),
+            _VisionUploadPanel(
+              imageBytes: _selectedImageBytes,
+              imageName: _selectedImage?.name,
+              prediction: prediction,
+              onCamera: () => _pickAndPredict(ImageSource.camera),
+              onGallery: () => _pickAndPredict(ImageSource.gallery),
             ),
             const SizedBox(height: 12),
+            if (items.isNotEmpty) ...[
+              _CameraEvidence(detection: latest),
+              const SizedBox(height: 12),
+              _FilterControl(
+                value: _filter,
+                onChanged: (value) => setState(() => _filter = value),
+              ),
+              const SizedBox(height: 12),
+            ],
             SectionCard(
               padding: const EdgeInsets.all(14),
               child: Column(
@@ -78,7 +109,7 @@ class _VisionScreenState extends ConsumerState<VisionScreen> {
                         ),
                       ),
                       Text(
-                        '${filtered.length} data',
+                        '${items.isEmpty ? 0 : filtered.length} data',
                         style: const TextStyle(
                           fontSize: 11,
                           color: AppTheme.textMuted,
@@ -88,7 +119,11 @@ class _VisionScreenState extends ConsumerState<VisionScreen> {
                     ],
                   ),
                   const SizedBox(height: 10),
-                  if (filtered.isEmpty)
+                  if (items.isEmpty)
+                    _EmptyVisionHistory(
+                      onRefresh: () => ref.refresh(detectionsProvider),
+                    )
+                  else if (filtered.isEmpty)
                     const _EmptyListMessage()
                   else
                     for (final item in filtered.take(8))
@@ -112,6 +147,364 @@ class _VisionScreenState extends ConsumerState<VisionScreen> {
           padding: const EdgeInsets.all(24),
           child: Text('Gagal memuat kamera vision: $error'),
         ),
+      ),
+    );
+  }
+}
+
+class _VisionUploadPanel extends StatelessWidget {
+  const _VisionUploadPanel({
+    required this.imageBytes,
+    required this.imageName,
+    required this.prediction,
+    required this.onCamera,
+    required this.onGallery,
+  });
+
+  final Uint8List? imageBytes;
+  final String? imageName;
+  final AsyncValue<PaddyPrediction?> prediction;
+  final VoidCallback onCamera;
+  final VoidCallback onGallery;
+
+  @override
+  Widget build(BuildContext context) {
+    final isLoading = prediction.isLoading;
+
+    return SectionCard(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(9),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryGreen.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.document_scanner_rounded,
+                  color: AppTheme.primaryGreen,
+                  size: 21,
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Scan Tanaman Padi',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                        color: AppTheme.textStrong,
+                      ),
+                    ),
+                    Text(
+                      'Kamera atau galeri',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppTheme.textMuted,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (isLoading)
+                const SizedBox(
+                  width: 22,
+                  height: 22,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.4,
+                    color: AppTheme.primaryGreen,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: AspectRatio(
+              aspectRatio: 4 / 3,
+              child: DecoratedBox(
+                decoration: const BoxDecoration(color: Color(0xFFF1F5F9)),
+                child: imageBytes == null
+                    ? const _UploadPlaceholder()
+                    : Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          Image.memory(imageBytes!, fit: BoxFit.cover),
+                          Positioned(
+                            left: 10,
+                            bottom: 10,
+                            right: 10,
+                            child: _ImageNameBadge(
+                              label: imageName == null || imageName!.isEmpty
+                                  ? 'Foto tanaman'
+                                  : imageName!,
+                            ),
+                          ),
+                        ],
+                      ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: isLoading ? null : onCamera,
+                  icon: const Icon(Icons.photo_camera_rounded, size: 18),
+                  label: const Text('Scan Foto'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: isLoading ? null : onGallery,
+                  icon: const Icon(Icons.photo_library_rounded, size: 18),
+                  label: const Text('Galeri'),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          prediction.when(
+            data: (result) => result == null
+                ? const _PredictionIdle()
+                : _PredictionResult(prediction: result),
+            loading: () => const _PredictionLoading(),
+            error: (error, stackTrace) =>
+                _PredictionError(message: _errorText(error)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _UploadPlaceholder extends StatelessWidget {
+  const _UploadPlaceholder();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.add_photo_alternate_rounded,
+            color: AppTheme.textMuted,
+            size: 44,
+          ),
+          SizedBox(height: 8),
+          Text(
+            'Belum ada foto',
+            style: TextStyle(
+              color: AppTheme.textMuted,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ImageNameBadge extends StatelessWidget {
+  const _ImageNameBadge({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.56),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+        ),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+    );
+  }
+}
+
+class _PredictionIdle extends StatelessWidget {
+  const _PredictionIdle();
+
+  @override
+  Widget build(BuildContext context) {
+    return const _PredictionNotice(
+      icon: Icons.image_search_rounded,
+      title: 'Hasil prediksi akan tampil di sini',
+      color: AppTheme.textMuted,
+    );
+  }
+}
+
+class _PredictionLoading extends StatelessWidget {
+  const _PredictionLoading();
+
+  @override
+  Widget build(BuildContext context) {
+    return const _PredictionNotice(
+      icon: Icons.auto_awesome_rounded,
+      title: 'Menganalisis foto',
+      color: AppTheme.primaryGreen,
+    );
+  }
+}
+
+class _PredictionError extends StatelessWidget {
+  const _PredictionError({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return _PredictionNotice(
+      icon: Icons.error_rounded,
+      title: message,
+      color: AppTheme.critical,
+    );
+  }
+}
+
+class _PredictionNotice extends StatelessWidget {
+  const _PredictionNotice({
+    required this.icon,
+    required this.title,
+    required this.color,
+  });
+
+  final IconData icon;
+  final String title;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.18)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              title,
+              style: TextStyle(
+                color: color,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PredictionResult extends StatelessWidget {
+  const _PredictionResult({required this.prediction});
+
+  final PaddyPrediction prediction;
+
+  @override
+  Widget build(BuildContext context) {
+    final confidence = prediction.confidencePercent;
+    final color = _predictionColor(prediction.status, confidence);
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.18)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: Icon(Icons.eco_rounded, color: color, size: 21),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      prediction.displayName,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900,
+                        color: AppTheme.textStrong,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      prediction.className,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppTheme.textMuted,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              StatusChip(
+                label: '${confidence.toStringAsFixed(1)}%',
+                color: color,
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              minHeight: 8,
+              value: (confidence / 100).clamp(0, 1).toDouble(),
+              color: color,
+              backgroundColor: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 8),
+          StatusChip(
+            label: prediction.status.replaceAll('_', ' ').toUpperCase(),
+            color: color,
+          ),
+        ],
       ),
     );
   }
@@ -669,35 +1062,32 @@ class _CameraBadge extends StatelessWidget {
   }
 }
 
-class _EmptyVision extends StatelessWidget {
-  const _EmptyVision({required this.onRefresh});
+class _EmptyVisionHistory extends StatelessWidget {
+  const _EmptyVisionHistory({required this.onRefresh});
 
   final VoidCallback onRefresh;
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Belum ada data deteksi vision',
-              textAlign: TextAlign.center,
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      child: Row(
+        children: [
+          const Expanded(
+            child: Text(
+              'Belum ada riwayat vision',
               style: TextStyle(
                 color: AppTheme.textMuted,
                 fontWeight: FontWeight.w700,
               ),
             ),
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: onRefresh,
-              icon: const Icon(Icons.refresh_rounded),
-              label: const Text('Refresh'),
-            ),
-          ],
-        ),
+          ),
+          TextButton.icon(
+            onPressed: onRefresh,
+            icon: const Icon(Icons.refresh_rounded, size: 18),
+            label: const Text('Refresh'),
+          ),
+        ],
       ),
     );
   }
@@ -761,6 +1151,22 @@ IconData _detectionIcon(String type) {
     'pest' => Icons.bug_report_rounded,
     _ => Icons.help_rounded,
   };
+}
+
+Color _predictionColor(String status, double confidence) {
+  final normalized = status.toLowerCase();
+  if (normalized.contains('high') || confidence >= 80) {
+    return AppTheme.primaryGreen;
+  }
+  if (normalized.contains('medium') || confidence >= 50) {
+    return AppTheme.warning;
+  }
+  return AppTheme.critical;
+}
+
+String _errorText(Object error) {
+  final text = error.toString();
+  return text.startsWith('Exception: ') ? text.substring(11) : text;
 }
 
 Detection _findDetectionForAlert(

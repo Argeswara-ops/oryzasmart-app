@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/api/api_client.dart';
@@ -225,6 +226,30 @@ class NurseryRepository {
       return Detection.fromJson(_client.dataEnvelope(response));
     } on DioException {
       return _mockDashboard().detection;
+    }
+  }
+
+  Future<PaddyPrediction> predictPaddyImage(XFile image) async {
+    try {
+      final bytes = await image.readAsBytes();
+      final formData = FormData.fromMap({
+        'image': MultipartFile.fromBytes(
+          bytes,
+          filename: image.name.isEmpty ? 'paddy-image.jpg' : image.name,
+        ),
+      });
+      final response = await _client.dio.post<Map<String, dynamic>>(
+        '/paddy/predict',
+        data: formData,
+        options: Options(contentType: Headers.multipartFormDataContentType),
+      );
+      final body = response.data ?? <String, dynamic>{};
+      final prediction = body['prediction'] is Map<String, dynamic>
+          ? body['prediction'] as Map<String, dynamic>
+          : _client.dataEnvelope(response);
+      return PaddyPrediction.fromJson(prediction);
+    } on DioException catch (error) {
+      throw PredictionException.fromDio(error);
     }
   }
 
@@ -565,6 +590,32 @@ class LoginException implements Exception {
     }
     return LoginException(
       'Backend tidak terjangkau dari perangkat di ${AppConfig.apiBaseUrl}. Periksa jaringan, IP laptop, dan firewall.',
+    );
+  }
+
+  @override
+  String toString() => message;
+}
+
+class PredictionException implements Exception {
+  const PredictionException(this.message);
+
+  final String message;
+
+  factory PredictionException.fromDio(DioException error) {
+    final statusCode = error.response?.statusCode;
+    final data = error.response?.data;
+    final nestedMessage = data is Map<String, dynamic> && data['error'] is Map
+        ? _messageFromResponse(data['error'])
+        : null;
+    final message = nestedMessage ?? _messageFromResponse(data);
+    if (statusCode != null) {
+      return PredictionException(
+        message ?? 'Prediksi gagal diproses. Kode HTTP $statusCode.',
+      );
+    }
+    return const PredictionException(
+      'Backend prediksi tidak terjangkau. Periksa koneksi dan base URL API.',
     );
   }
 

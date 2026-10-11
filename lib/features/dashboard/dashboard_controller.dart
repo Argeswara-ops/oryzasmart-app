@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../core/api/api_providers.dart';
 import '../../shared/models/nursery_models.dart';
@@ -47,6 +48,11 @@ final fanControlBusyProvider = NotifierProvider<FanControlBusyController, bool>(
 final fanControlErrorProvider =
     NotifierProvider<FanControlErrorController, Object?>(
       FanControlErrorController.new,
+    );
+
+final visionPredictionProvider =
+    AsyncNotifierProvider<VisionPredictionController, PaddyPrediction?>(
+      VisionPredictionController.new,
     );
 
 class FanController extends AsyncNotifier<FanState> {
@@ -115,6 +121,22 @@ class FanControlErrorController extends Notifier<Object?> {
 
   void setError(Object? error) {
     state = error;
+  }
+}
+
+class VisionPredictionController extends AsyncNotifier<PaddyPrediction?> {
+  @override
+  PaddyPrediction? build() => null;
+
+  Future<void> predict(XFile image) async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(
+      () => ref.read(nurseryRepositoryProvider).predictPaddyImage(image),
+    );
+  }
+
+  void clear() {
+    state = const AsyncData(null);
   }
 }
 

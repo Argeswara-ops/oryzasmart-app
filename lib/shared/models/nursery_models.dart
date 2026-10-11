@@ -96,6 +96,35 @@ class Detection {
   }
 }
 
+class PaddyPrediction {
+  const PaddyPrediction({
+    required this.classId,
+    required this.className,
+    required this.displayName,
+    required this.confidence,
+    required this.status,
+  });
+
+  final int? classId;
+  final String className;
+  final String displayName;
+  final double confidence;
+  final String status;
+
+  double get confidencePercent => confidence <= 1 ? confidence * 100 : confidence;
+
+  factory PaddyPrediction.fromJson(Map<String, dynamic> json) {
+    return PaddyPrediction(
+      classId: _toNullableInt(json['class_id']),
+      className: '${json['class'] ?? json['class_name'] ?? 'unknown'}',
+      displayName:
+          '${json['display_name'] ?? json['class_name'] ?? json['class'] ?? 'Unknown'}',
+      confidence: _toDouble(json['confidence']),
+      status: '${json['status'] ?? 'unknown'}',
+    );
+  }
+}
+
 class DeviceStatus {
   const DeviceStatus({
     required this.code,
