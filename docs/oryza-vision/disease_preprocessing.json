@@ -1,0 +1,43 @@
+{
+  "task": "disease",
+  "architecture": "mobilenet_v3_large",
+  "input_layout": "NHWC",
+  "input_dtype": "float32",
+  "input_shape": [
+    1,
+    224,
+    224,
+    3
+  ],
+  "image_preprocessing": {
+    "read": "RGB; respect EXIF orientation",
+    "resize_shorter_side": 256,
+    "center_crop": [
+      224,
+      224
+    ],
+    "pixel_scale": "divide RGB values by 255.0",
+    "channel_order": "RGB",
+    "normalize_mean": [
+      0.485,
+      0.456,
+      0.406
+    ],
+    "normalize_std": [
+      0.229,
+      0.224,
+      0.225
+    ],
+    "formula": "(pixel/255 - mean[channel]) / std[channel]"
+  },
+  "output": "raw logits; softmax then argmax",
+  "labels": [
+    "Bacterial_Blight",
+    "Brown_Spot",
+    "Healthy",
+    "Leaf_Blast",
+    "Leaf_Scald"
+  ],
+  "status": "validated",
+  "note": "Model tidak mengandung preprocessing. Flutter WAJIB meniru metadata."
+}

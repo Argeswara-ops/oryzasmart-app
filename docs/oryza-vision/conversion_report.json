@@ -1,0 +1,26 @@
+{
+  "disease": {
+    "status": "validated",
+    "path": "/content/drive/MyDrive/Oryza-Vision/tflite-export/disease_model.tflite",
+    "error": null,
+    "validation": {
+      "max_abs_logit_difference": 1.0192394256591797e-05,
+      "top1_agreement_on_synthetic_inputs": 1.0,
+      "samples": 10,
+      "passed": true
+    },
+    "size_mb": 16.19
+  },
+  "pest": {
+    "status": "validated",
+    "path": "/content/drive/MyDrive/Oryza-Vision/tflite-export/pest_model.tflite",
+    "error": null,
+    "validation": {
+      "max_abs_logit_difference": 1.5050172805786133e-06,
+      "top1_agreement_on_synthetic_inputs": 1.0,
+      "samples": 10,
+      "passed": true
+    },
+    "size_mb": 15.49
+  }
+}

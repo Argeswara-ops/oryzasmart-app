@@ -1,0 +1,18 @@
+{
+  "java.import.gradle.enabled": false,
+  "java.configuration.updateBuildConfiguration": "disabled",
+  "java.project.resourceFilters": [
+    "node_modules",
+    ".git",
+    "build",
+    ".dart_tool",
+    "android/.gradle",
+    "android/.kotlin"
+  ],
+  "files.watcherExclude": {
+    "**/.dart_tool/**": true,
+    "**/build/**": true,
+    "**/android/.gradle/**": true,
+    "**/android/.kotlin/**": true
+  }
+}

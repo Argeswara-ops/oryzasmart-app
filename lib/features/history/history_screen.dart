@@ -10,6 +10,10 @@ import '../../shared/models/nursery_models.dart';
 import '../../shared/widgets/section_card.dart';
 import '../../shared/widgets/status_chip.dart';
 import '../dashboard/dashboard_controller.dart';
+import '../oryza_vision/data/repositories/vision_history_repository.dart';
+import '../oryza_vision/domain/entities/vision_models.dart';
+import '../oryza_vision/presentation/controllers/vision_history_controller.dart';
+import '../oryza_vision/presentation/screens/vision_screen.dart';
 
 class HistoryScreen extends ConsumerStatefulWidget {
   const HistoryScreen({super.key});
@@ -26,7 +30,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   @override
   Widget build(BuildContext context) {
     final history = ref.watch(sensorHistoryProvider(_period));
-    final detections = ref.watch(detectionsProvider);
+    final scans = ref.watch(visionHistoryProvider);
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
@@ -54,8 +58,8 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
             error: (error, stackTrace) => Text('Error: $error'),
           )
         else
-          detections.when(
-            data: (items) => _VisionHistory(items: items),
+          scans.when(
+            data: (state) => _VisionHistory(items: state.records),
             loading: () => const Center(
               child: Padding(
                 padding: EdgeInsets.all(32),
@@ -272,7 +276,7 @@ class _ChartLine {
 class _VisionHistory extends StatelessWidget {
   const _VisionHistory({required this.items});
 
-  final List<Detection> items;
+  final List<VisionScanRecord> items;
 
   @override
   Widget build(BuildContext context) {
@@ -281,7 +285,7 @@ class _VisionHistory extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Timeline Vision AI',
+            'Riwayat Scan Manual',
             style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w900,
@@ -303,73 +307,78 @@ class _VisionHistory extends StatelessWidget {
 class _VisionHistoryTile extends StatelessWidget {
   const _VisionHistoryTile({required this.item});
 
-  final Detection item;
+  final VisionScanRecord item;
 
   @override
   Widget build(BuildContext context) {
-    final color = switch (item.type) {
-      'healthy' => AppTheme.primaryGreen,
-      'disease' => AppTheme.critical,
-      'pest' => AppTheme.warning,
-      _ => AppTheme.textMuted,
-    };
+    final color = item.task.name == 'pest'
+        ? AppTheme.warning
+        : AppTheme.primaryGreen;
 
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+    return InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => VisionHistoryDetailScreen(record: item),
+        ),
       ),
-      child: Row(
-        children: [
-          Container(
-            width: 46,
-            height: 42,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 46,
+              height: 42,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                item.task.name == 'pest'
+                    ? Icons.bug_report_rounded
+                    : Icons.eco_rounded,
+                color: color,
+                size: 22,
+              ),
             ),
-            child: Icon(
-              item.type == 'healthy'
-                  ? Icons.verified_rounded
-                  : Icons.warning_amber_rounded,
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.displayName,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w900,
+                      color: AppTheme.textStrong,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    '${DateFormat('dd MMM yyyy HH:mm').format(item.scannedAt)} • Scan ${item.task.title}',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppTheme.textMuted,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            StatusChip(
+              label: '${(item.confidence * 100).round()}%',
               color: color,
-              size: 22,
             ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.className,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w900,
-                    color: AppTheme.textStrong,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Text(
-                  '${DateFormat('dd MMM yyyy HH:mm').format(item.detectedAt)} - ${item.cameraId}',
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: AppTheme.textMuted,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          StatusChip(
-            label: '${(item.confidence * 100).round()}%',
-            color: color,
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

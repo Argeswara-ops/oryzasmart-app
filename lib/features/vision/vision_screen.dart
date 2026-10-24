@@ -10,6 +10,7 @@ import '../../shared/models/nursery_models.dart';
 import '../../shared/widgets/section_card.dart';
 import '../../shared/widgets/status_chip.dart';
 import '../dashboard/dashboard_controller.dart';
+import '../oryza_vision/presentation/widgets/vision_feature_card.dart';
 
 class VisionScreen extends ConsumerStatefulWidget {
   const VisionScreen({super.key});
@@ -74,14 +75,20 @@ class _VisionScreenState extends ConsumerState<VisionScreen> {
         return ListView(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
           children: [
-            _VisionUploadPanel(
-              imageBytes: _selectedImageBytes,
-              imageName: _selectedImage?.name,
-              prediction: prediction,
-              onCamera: () => _pickAndPredict(ImageSource.camera),
-              onGallery: () => _pickAndPredict(ImageSource.gallery),
-            ),
+            const OryzaVisionFeatureCard(),
             const SizedBox(height: 12),
+            // Alur backend lama dipertahankan untuk kompatibilitas, tetapi
+            // default Oryza Vision selalu memakai inference offline di atas.
+            if (const bool.fromEnvironment('ENABLE_LEGACY_VISION_UPLOAD')) ...[
+              _VisionUploadPanel(
+                imageBytes: _selectedImageBytes,
+                imageName: _selectedImage?.name,
+                prediction: prediction,
+                onCamera: () => _pickAndPredict(ImageSource.camera),
+                onGallery: () => _pickAndPredict(ImageSource.gallery),
+              ),
+              const SizedBox(height: 12),
+            ],
             if (items.isNotEmpty) ...[
               _CameraEvidence(detection: latest),
               const SizedBox(height: 12),

@@ -10,7 +10,7 @@ import '../dashboard/dashboard_screen.dart';
 import '../devices/devices_screen.dart';
 import '../history/history_screen.dart';
 import '../settings/settings_screen.dart';
-import '../vision/vision_screen.dart';
+import '../oryza_vision/presentation/screens/vision_screen.dart';
 
 class AppShell extends ConsumerStatefulWidget {
   const AppShell({super.key, required this.user, required this.onLogout});
@@ -32,9 +32,6 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   void _openAlertTarget(SystemAlert alert) {
     final target = _targetIndexForAlert(alert);
-    if (target == 2) {
-      ref.read(visionFocusAlertProvider.notifier).setAlert(alert);
-    }
     setState(() {
       _index = target;
       _showNotifications = false;
@@ -43,25 +40,15 @@ class _AppShellState extends ConsumerState<AppShell> {
 
   int _targetIndexForAlert(SystemAlert alert) {
     final text = '${alert.title} ${alert.message}'.toLowerCase();
-    if (text.contains('deteksi') ||
-        text.contains('camera') ||
-        text.contains('cam-') ||
-        text.contains('rice') ||
-        text.contains('blast') ||
-        text.contains('hama') ||
-        text.contains('penyakit')) {
-      return 2;
-    }
     if (text.contains('riwayat') || text.contains('history')) return 3;
+    // Alert perangkat/kamera tetap diarahkan ke dashboard. Tab Vision sekarang
+    // khusus scan manual dan tidak lagi memiliki detail CAM.
     return 0;
   }
 
   @override
   Widget build(BuildContext context) {
     final dashboardState = ref.watch(dashboardProvider);
-    final selectedDetection = ref.watch(visionSelectedDetectionProvider);
-    final isVisionDetail =
-        !_showNotifications && _index == 2 && selectedDetection != null;
     final alertCount = dashboardState.maybeWhen(
       data: (data) => data.unreadAlerts,
       orElse: () => 0,
@@ -70,8 +57,6 @@ class _AppShellState extends ConsumerState<AppShell> {
     PreferredSizeWidget buildAppBar() {
       final titleWidget = _showNotifications
           ? const _AppBarTitle(title: 'Notifikasi')
-          : isVisionDetail
-          ? const _AppBarTitle(title: 'Detail Deteksi')
           : switch (_index) {
               0 => const _BrandTitle(),
               1 => const _AppBarTitle(title: 'Device'),
@@ -87,23 +72,17 @@ class _AppShellState extends ConsumerState<AppShell> {
         elevation: 0,
         scrolledUnderElevation: 0,
         titleSpacing: 16,
-        leading: _showNotifications || isVisionDetail
+        leading: _showNotifications
             ? IconButton(
                 tooltip: 'Kembali',
                 icon: const Icon(Icons.arrow_back_rounded),
                 onPressed: () {
-                  if (isVisionDetail) {
-                    ref
-                        .read(visionSelectedDetectionProvider.notifier)
-                        .select(null);
-                    return;
-                  }
                   setState(() => _showNotifications = false);
                 },
               )
             : null,
         title: titleWidget,
-        actions: _showNotifications || isVisionDetail
+        actions: _showNotifications
             ? null
             : [
                 Padding(
@@ -200,7 +179,6 @@ class _AppShellState extends ConsumerState<AppShell> {
           height: 58,
           selectedIndex: _index,
           onDestinationSelected: (value) => setState(() {
-            ref.read(visionSelectedDetectionProvider.notifier).select(null);
             _index = value;
             _showNotifications = false;
           }),

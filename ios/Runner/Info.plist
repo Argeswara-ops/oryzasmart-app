@@ -2,6 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSCameraUsageDescription</key>
+	<string>ORYZA SMART menggunakan kamera untuk memindai penyakit dan hama padi.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>ORYZA SMART mengakses galeri untuk memilih foto tanaman padi.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>

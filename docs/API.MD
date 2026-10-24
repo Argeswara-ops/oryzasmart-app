@@ -419,6 +419,63 @@ HEALTHY
 UNKNOWN
 ```
 
+## Endpoint Riwayat Scan Manual Oryza Vision
+
+Endpoint ini dipakai Flutter untuk menyinkronkan dan membaca riwayat hasil scan manual. Data disimpan pada `vision_scans` dan terpisah dari `detections` milik kamera/Python Vision Service. Semua endpoint memerlukan bearer token Sanctum.
+
+### GET `/vision/scans`
+
+Mengambil scan milik user aktif, diurutkan dari `scanned_at` terbaru dan dipaginasi.
+
+Query opsional:
+
+```text
+scan_type: disease atau pest
+page: integer mulai dari 1
+per_page: integer 1 sampai 100 (default 15)
+```
+
+Contoh: `/vision/scans?scan_type=disease&page=1&per_page=20`.
+
+### POST `/vision/scans`
+
+Gunakan `multipart/form-data`:
+
+```text
+client_id: required string max 100
+scan_type: required disease|pest
+class_name: required string max 100
+display_name: required string max 150
+confidence: required numeric 0..1
+scanned_at: required ISO-8601, contoh 2026-10-24T08:30:00+07:00
+image: required JPG/JPEG/PNG/WEBP max 10 MB
+```
+
+`client_id` adalah ID lokal dari Flutter. Kombinasi user dan `client_id` bersifat unik: kiriman pertama mengembalikan `201 Created`, sedangkan retry mengembalikan record lama dengan `200 OK` tanpa menyimpan gambar atau row baru.
+
+### GET `/vision/scans/{visionScan}`
+
+Mengambil satu scan milik user aktif. Scan milik user lain tidak dapat diakses.
+
+Format setiap item:
+
+```json
+{
+  "id": 12,
+  "local_id": "scan-mobile-001",
+  "client_id": "scan-mobile-001",
+  "scan_type": "disease",
+  "class_name": "rice_blast",
+  "display_name": "Rice Blast",
+  "confidence": 0.9274,
+  "scanned_at": "2026-10-24T01:30:00.000000Z",
+  "image_url": "http://127.0.0.1:8000/storage/vision-scans/1/example.jpg",
+  "created_at": "2026-10-24T01:31:00.000000Z"
+}
+```
+
+Jalankan `php artisan storage:link` agar `image_url` pada public disk dapat diakses.
+
 ## Endpoint Alert
 
 ### GET `/alerts`
