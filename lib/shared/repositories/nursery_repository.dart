@@ -93,15 +93,18 @@ class NurseryRepository {
       throw const ApiException('Response dashboard Laravel kosong.');
     }
 
-    final fallback = _mockDashboard();
-    final alerts = _applyReadState(
-      _alertsFrom(data['alerts'], fallback.alerts),
-    );
+    final alerts = _applyReadState(_alertsFrom(data['alerts']));
     final localUnreadAlerts = alerts.where((alert) => !alert.isRead).length;
     final serverUnreadAlerts = _toInt(data['unread_alerts']);
     final unreadAlerts = serverUnreadAlerts > localUnreadAlerts
         ? (serverUnreadAlerts - _readAlertIds.length).clamp(0, 999)
         : localUnreadAlerts;
+
+    final systemStatus = '${data['system_status'] ?? 'NORMAL'}';
+    final recommendation = await _dashboardRecommendation(
+      data['recommendation'],
+      systemStatus,
+    );
 
     return DashboardSnapshot(
       device: DeviceStatus.fromJson(
@@ -124,15 +127,8 @@ class NurseryRepository {
       ),
       fan: FanState.fromJson(_mapOf(data['fan'])),
       alerts: alerts,
-      recommendation: data['recommendation'] is Map<String, dynamic>
-          ? Recommendation.fromJson(
-              data['recommendation'] as Map<String, dynamic>,
-            )
-          : _recommendationFromStatus(
-              '${data['system_status'] ?? 'NORMAL'}',
-              fallback.recommendation,
-            ),
-      systemStatus: '${data['system_status'] ?? 'NORMAL'}',
+      recommendation: recommendation,
+      systemStatus: systemStatus,
       unreadAlerts: unreadAlerts,
     );
   }
@@ -160,73 +156,57 @@ class NurseryRepository {
   }
 
   Future<List<DeviceStatus>> getDevices() async {
-    try {
-      final response = await _client.dio.get<dynamic>('/devices');
-      return _client
-          .listEnvelope(response)
-          .whereType<Map<String, dynamic>>()
-          .map(
-            (item) => DeviceStatus.fromJson(
-              item,
-              fallbackCode: 'ESP32-01',
-              fallbackName: 'Nursery Controller',
-            ),
-          )
-          .toList();
-    } on DioException {
-      return [_mockDashboard().device];
-    }
+    final response = await _client.dio.get<dynamic>('/devices');
+    return _client
+        .listEnvelope(response)
+        .whereType<Map<String, dynamic>>()
+        .map(
+          (item) => DeviceStatus.fromJson(
+            item,
+            fallbackCode: 'ESP32-01',
+            fallbackName: 'Nursery Controller',
+          ),
+        )
+        .toList();
   }
 
   Future<List<DeviceStatus>> getCameras() async {
-    try {
-      final response = await _client.dio.get<dynamic>('/cameras');
-      return _client
-          .listEnvelope(response)
-          .whereType<Map<String, dynamic>>()
-          .map(
-            (item) => DeviceStatus.fromJson(
-              item,
-              fallbackCode: 'CAM-01',
-              fallbackName: 'Camera 01',
-            ),
-          )
-          .toList();
-    } on DioException {
-      return [_mockDashboard().camera];
-    }
+    final response = await _client.dio.get<dynamic>('/cameras');
+    return _client
+        .listEnvelope(response)
+        .whereType<Map<String, dynamic>>()
+        .map(
+          (item) => DeviceStatus.fromJson(
+            item,
+            fallbackCode: 'CAM-01',
+            fallbackName: 'Camera 01',
+          ),
+        )
+        .toList();
   }
 
   Future<List<Detection>> getDetections({String? type, String? camera}) async {
-    try {
-      final queryParameters = <String, dynamic>{
-        if (type != null && type != 'all') 'type': type,
-      };
-      if (camera != null) queryParameters['camera'] = camera;
+    final queryParameters = <String, dynamic>{
+      if (type != null && type != 'all') 'type': type,
+    };
+    if (camera != null) queryParameters['camera'] = camera;
 
-      final response = await _client.dio.get<dynamic>(
-        '/detections',
-        queryParameters: queryParameters,
-      );
-      return _client
-          .listEnvelope(response)
-          .whereType<Map<String, dynamic>>()
-          .map(Detection.fromJson)
-          .toList();
-    } on DioException {
-      return _mockDetections();
-    }
+    final response = await _client.dio.get<dynamic>(
+      '/detections',
+      queryParameters: queryParameters,
+    );
+    return _client
+        .listEnvelope(response)
+        .whereType<Map<String, dynamic>>()
+        .map(Detection.fromJson)
+        .toList();
   }
 
   Future<Detection> getLatestDetection() async {
-    try {
-      final response = await _client.dio.get<Map<String, dynamic>>(
-        '/detections/latest',
-      );
-      return Detection.fromJson(_client.dataEnvelope(response));
-    } on DioException {
-      return _mockDashboard().detection;
-    }
+    final response = await _client.dio.get<Map<String, dynamic>>(
+      '/detections/latest',
+    );
+    return Detection.fromJson(_client.dataEnvelope(response));
   }
 
   Future<PaddyPrediction> predictPaddyImage(XFile image) async {
@@ -254,17 +234,13 @@ class NurseryRepository {
   }
 
   Future<List<SystemAlert>> getAlerts() async {
-    try {
-      final response = await _client.dio.get<dynamic>('/alerts');
-      final alerts = _client
-          .listEnvelope(response)
-          .whereType<Map<String, dynamic>>()
-          .map(SystemAlert.fromJson)
-          .toList();
-      return _applyReadState(alerts);
-    } on DioException {
-      return _applyReadState(_mockDashboard().alerts);
-    }
+    final response = await _client.dio.get<dynamic>('/alerts');
+    final alerts = _client
+        .listEnvelope(response)
+        .whereType<Map<String, dynamic>>()
+        .map(SystemAlert.fromJson)
+        .toList();
+    return _applyReadState(alerts);
   }
 
   Future<void> markAlertRead(int id) async {
@@ -301,27 +277,19 @@ class NurseryRepository {
   }
 
   Future<List<Recommendation>> getRecommendations() async {
-    try {
-      final response = await _client.dio.get<dynamic>('/recommendations');
-      return _client
-          .listEnvelope(response)
-          .whereType<Map<String, dynamic>>()
-          .map(Recommendation.fromJson)
-          .toList();
-    } on DioException {
-      return [_mockDashboard().recommendation];
-    }
+    final response = await _client.dio.get<dynamic>('/recommendations');
+    return _client
+        .listEnvelope(response)
+        .whereType<Map<String, dynamic>>()
+        .map(Recommendation.fromJson)
+        .toList();
   }
 
   Future<Recommendation> getLatestRecommendation() async {
-    try {
-      final response = await _client.dio.get<Map<String, dynamic>>(
-        '/recommendations/latest',
-      );
-      return Recommendation.fromJson(_client.dataEnvelope(response));
-    } on DioException {
-      return _mockDashboard().recommendation;
-    }
+    final response = await _client.dio.get<Map<String, dynamic>>(
+      '/recommendations/latest',
+    );
+    return Recommendation.fromJson(_client.dataEnvelope(response));
   }
 
   Future<FanState> getFanStatus() async {
@@ -356,28 +324,34 @@ class NurseryRepository {
   }
 
   Future<List<Map<String, dynamic>>> getThresholds() async {
-    try {
-      final response = await _client.dio.get<Map<String, dynamic>>(
-        '/thresholds',
-      );
-      final data = _client.dataEnvelope(response);
-      if (data['thresholds'] is List) {
-        return (data['thresholds'] as List)
-            .whereType<Map<String, dynamic>>()
-            .toList();
-      }
-      return data.entries
-          .where((entry) => entry.value is Map<String, dynamic>)
-          .map(
-            (entry) => {
-              'sensor_type': entry.key,
-              ...(entry.value as Map<String, dynamic>),
-            },
-          )
-          .toList();
-    } on DioException {
-      return const [];
+    final response = await _client.dio.get<dynamic>('/thresholds');
+    final list = _client.listEnvelope(response);
+    if (list.isNotEmpty) {
+      return list.whereType<Map<String, dynamic>>().toList();
     }
+    final body = response.data;
+    final data = body is Map<String, dynamic>
+        ? _client.dataEnvelope(
+            Response<Map<String, dynamic>>(
+              data: body,
+              requestOptions: response.requestOptions,
+            ),
+          )
+        : <String, dynamic>{};
+    if (data['thresholds'] is List) {
+      return (data['thresholds'] as List)
+          .whereType<Map<String, dynamic>>()
+          .toList();
+    }
+    return data.entries
+        .where((entry) => entry.value is Map<String, dynamic>)
+        .map(
+          (entry) => {
+            'sensor_type': entry.key,
+            ...(entry.value as Map<String, dynamic>),
+          },
+        )
+        .toList();
   }
 
   Future<FanState> _controlFan({
@@ -422,14 +396,14 @@ class NurseryRepository {
     );
   }
 
-  List<SystemAlert> _alertsFrom(Object? value, List<SystemAlert> fallback) {
+  List<SystemAlert> _alertsFrom(Object? value) {
     if (value is List) {
       return value
           .whereType<Map<String, dynamic>>()
           .map(SystemAlert.fromJson)
           .toList();
     }
-    return fallback;
+    return const [];
   }
 
   List<SystemAlert> _applyReadState(List<SystemAlert> alerts) {
@@ -442,10 +416,21 @@ class NurseryRepository {
     ];
   }
 
-  Recommendation _recommendationFromStatus(
+  Future<Recommendation> _dashboardRecommendation(
+    Object? value,
     String status,
-    Recommendation fallback,
-  ) {
+  ) async {
+    if (value is Map<String, dynamic>) {
+      return Recommendation.fromJson(value);
+    }
+    try {
+      return await getLatestRecommendation();
+    } on DioException {
+      return _recommendationFromStatus(status);
+    }
+  }
+
+  Recommendation _recommendationFromStatus(String status) {
     final normalized = status.toUpperCase();
     if (normalized == 'NORMAL') {
       return const Recommendation(
@@ -456,8 +441,8 @@ class NurseryRepository {
     }
     return Recommendation(
       status: normalized,
-      cause: fallback.cause,
-      message: fallback.message,
+      cause: 'Kondisi nursery memerlukan perhatian.',
+      message: 'Periksa sensor dan kondisi tanaman terbaru.',
     );
   }
 
@@ -469,99 +454,6 @@ class NurseryRepository {
     if (value is int) return value;
     if (value is num) return value.toInt();
     return int.tryParse('$value') ?? 0;
-  }
-
-  DashboardSnapshot _mockDashboard() {
-    final now = DateTime.now();
-    final alerts = _applyReadState([
-      SystemAlert(
-        id: 1,
-        level: 'WARNING',
-        title: 'Kelembapan tinggi',
-        message: 'Kelembapan udara berada di 81%.',
-        createdAt: now.subtract(const Duration(minutes: 8)),
-      ),
-      SystemAlert(
-        id: 2,
-        level: 'WARNING',
-        title: 'Rice Blast terdeteksi',
-        message: 'CAM-01 mendeteksi penyakit dengan confidence 92%.',
-        createdAt: now.subtract(const Duration(minutes: 6)),
-      ),
-    ]);
-    return DashboardSnapshot(
-      device: DeviceStatus(
-        code: 'ESP32-01',
-        name: 'Nursery Controller',
-        status: 'ONLINE',
-        lastSeen: now.subtract(const Duration(seconds: 18)),
-      ),
-      camera: DeviceStatus(
-        code: 'CAM-01',
-        name: 'Camera 01',
-        status: 'ONLINE',
-        lastSeen: now.subtract(const Duration(seconds: 31)),
-      ),
-      sensor: SensorReading(
-        deviceId: 'ESP32-01',
-        temperature: 29.4,
-        humidity: 81,
-        nitrogen: 40,
-        phosphorus: 22,
-        potassium: 31,
-        light: 720,
-        ultrasonic: 14,
-        createdAt: now,
-      ),
-      detection: Detection(
-        cameraId: 'CAM-01',
-        type: 'disease',
-        className: 'Rice Blast',
-        confidence: 0.92,
-        image: 'detections/cam01-001.jpg',
-        detectedAt: now.subtract(const Duration(minutes: 6)),
-      ),
-      fan: _fan,
-      alerts: alerts,
-      recommendation: const Recommendation(
-        status: 'PERLU PERHATIAN',
-        cause: 'Kelembapan udara tinggi dan Rice Blast terdeteksi.',
-        message:
-            'Periksa tanaman pada area CAM-01 dan jaga sirkulasi udara pembibitan.',
-      ),
-      systemStatus: 'WARNING',
-      unreadAlerts: alerts.where((alert) => !alert.isRead).length,
-    );
-  }
-
-  List<Detection> _mockDetections() {
-    final now = DateTime.now();
-    return [
-      Detection(
-        cameraId: 'CAM-01',
-        type: 'disease',
-        className: 'Rice Blast',
-        confidence: 0.92,
-        image: 'detections/cam01-001.jpg',
-        detectedAt: now.subtract(const Duration(minutes: 6)),
-      ),
-      Detection(
-        cameraId: 'CAM-01',
-        type: 'pest',
-        className: 'Brown Planthopper',
-        confidence: 0.87,
-        image: 'detections/cam01-002.jpg',
-        detectedAt: now.subtract(const Duration(hours: 1, minutes: 31)),
-      ),
-      Detection(
-        cameraId: 'CAM-01',
-        type: 'healthy',
-        className: 'Healthy',
-        confidence: 0.96,
-        image: 'detections/cam01-003.jpg',
-        detectedAt: now.subtract(const Duration(hours: 4)),
-      ),
-    ];
   }
 }
 

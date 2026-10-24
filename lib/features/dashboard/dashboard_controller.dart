@@ -28,6 +28,29 @@ final detectionsProvider = StreamProvider<List<Detection>>((ref) {
   return _poll(repository.getDetections, _historyRefreshInterval);
 });
 
+final alertsProvider = StreamProvider<List<SystemAlert>>((ref) {
+  final repository = ref.watch(nurseryRepositoryProvider);
+  return _poll(repository.getAlerts, _historyRefreshInterval);
+});
+
+final deviceFleetProvider = StreamProvider<DeviceFleet>((ref) {
+  final repository = ref.watch(nurseryRepositoryProvider);
+  return _poll(() async {
+    final results = await Future.wait([
+      repository.getDevices(),
+      repository.getCameras(),
+    ]);
+    return DeviceFleet(devices: results[0], cameras: results[1]);
+  }, _historyRefreshInterval);
+});
+
+class DeviceFleet {
+  const DeviceFleet({required this.devices, required this.cameras});
+
+  final List<DeviceStatus> devices;
+  final List<DeviceStatus> cameras;
+}
+
 final visionFocusAlertProvider =
     NotifierProvider<VisionFocusAlertController, SystemAlert?>(
       VisionFocusAlertController.new,

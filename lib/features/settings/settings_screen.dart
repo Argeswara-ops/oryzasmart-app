@@ -1,25 +1,94 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/api/api_providers.dart';
 import '../../core/config/app_config.dart';
 import '../../core/theme/app_theme.dart';
 import '../../shared/repositories/nursery_repository.dart';
 import '../../shared/widgets/section_card.dart';
 
-class SettingsScreen extends StatefulWidget {
+class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key, required this.user, required this.onLogout});
 
   final AuthUser user;
   final Future<void> Function() onLogout;
 
   @override
-  State<SettingsScreen> createState() => _SettingsScreenState();
+  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen> {
+class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _criticalNotif = true;
   bool _dailySummary = true;
   double _temperatureLimit = 32;
   double _humidityLimit = 80;
+  double _temperatureMin = 20;
+  double _humidityMin = 60;
+  bool _loadingThresholds = true;
+  final Set<String> _savingThresholds = {};
+
+  @override
+  void initState() {
+    super.initState();
+    Future<void>.microtask(_loadThresholds);
+  }
+
+  Future<void> _loadThresholds() async {
+    try {
+      final items = await ref.read(nurseryRepositoryProvider).getThresholds();
+      for (final item in items) {
+        final type = '${item['sensor_type'] ?? item['type'] ?? ''}'
+            .toLowerCase();
+        final min = _asDouble(item['min_value'] ?? item['min']);
+        final max = _asDouble(item['max_value'] ?? item['max']);
+        if (type == 'temperature') {
+          if (min != null) _temperatureMin = min;
+          if (max != null) _temperatureLimit = max.clamp(25, 40);
+        } else if (type == 'humidity') {
+          if (min != null) _humidityMin = min;
+          if (max != null) _humidityLimit = max.clamp(60, 95);
+        }
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal memuat ambang sensor: $error')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loadingThresholds = false);
+    }
+  }
+
+  Future<void> _saveThreshold({
+    required String sensorType,
+    required double minValue,
+    required double maxValue,
+  }) async {
+    setState(() => _savingThresholds.add(sensorType));
+    try {
+      await ref
+          .read(nurseryRepositoryProvider)
+          .updateThreshold(
+            sensorType: sensorType,
+            minValue: minValue,
+            maxValue: maxValue,
+          );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Ambang sensor berhasil disimpan.')),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal menyimpan ambang sensor: $error')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _savingThresholds.remove(sensorType));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -67,6 +136,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 title: 'Ambang Sensor',
               ),
               const SizedBox(height: 12),
+              if (_loadingThresholds)
+                const LinearProgressIndicator(color: AppTheme.primaryGreen),
               _ThresholdSlider(
                 label: 'Suhu maksimum',
                 value: _temperatureLimit,
@@ -74,7 +145,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 max: 40,
                 unit: 'C',
                 color: AppTheme.warning,
+                enabled:
+                    !_loadingThresholds &&
+                    !_savingThresholds.contains('temperature'),
                 onChanged: (value) => setState(() => _temperatureLimit = value),
+                onChangeEnd: (value) => _saveThreshold(
+                  sensorType: 'temperature',
+                  minValue: _temperatureMin,
+                  maxValue: value,
+                ),
               ),
               const SizedBox(height: 10),
               _ThresholdSlider(
@@ -84,7 +163,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 max: 95,
                 unit: '%',
                 color: AppTheme.infoBlue,
+                enabled:
+                    !_loadingThresholds &&
+                    !_savingThresholds.contains('humidity'),
                 onChanged: (value) => setState(() => _humidityLimit = value),
+                onChangeEnd: (value) => _saveThreshold(
+                  sensorType: 'humidity',
+                  minValue: _humidityMin,
+                  maxValue: value,
+                ),
               ),
             ],
           ),
@@ -118,6 +205,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ],
     );
   }
+}
+
+double? _asDouble(Object? value) {
+  if (value is num) return value.toDouble();
+  return double.tryParse('$value');
 }
 
 class _ProfileCard extends StatelessWidget {
@@ -237,7 +329,9 @@ class _ThresholdSlider extends StatelessWidget {
     required this.max,
     required this.unit,
     required this.color,
+    required this.enabled,
     required this.onChanged,
+    required this.onChangeEnd,
   });
 
   final String label;
@@ -246,7 +340,9 @@ class _ThresholdSlider extends StatelessWidget {
   final double max;
   final String unit;
   final Color color;
+  final bool enabled;
   final ValueChanged<double> onChanged;
+  final ValueChanged<double> onChangeEnd;
 
   @override
   Widget build(BuildContext context) {
@@ -280,7 +376,8 @@ class _ThresholdSlider extends StatelessWidget {
           max: max,
           divisions: (max - min).round(),
           activeColor: color,
-          onChanged: onChanged,
+          onChanged: enabled ? onChanged : null,
+          onChangeEnd: enabled ? onChangeEnd : null,
         ),
       ],
     );

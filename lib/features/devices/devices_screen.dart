@@ -14,84 +14,111 @@ class DevicesScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final dashboard = ref.watch(dashboardProvider);
+    final fleet = ref.watch(deviceFleetProvider);
 
-    return dashboard.when(
-      data: (snapshot) => ListView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-        children: [
-          _FleetSummary(snapshot: snapshot),
-          const SizedBox(height: 12),
-          _DeviceCard(
-            icon: Icons.developer_board_rounded,
-            iconColor: AppTheme.primaryGreen,
-            title: snapshot.device.name,
-            code: snapshot.device.code,
-            status: snapshot.device.status,
-            lastSeen: snapshot.device.lastSeen,
-            details: const [
-              _DeviceDetail(
-                icon: Icons.wifi_rounded,
-                label: 'Koneksi',
-                value: 'Wi-Fi RSSI 98%',
-              ),
-              _DeviceDetail(
-                icon: Icons.sensors_rounded,
-                label: 'Payload',
-                value: 'Sensor node',
-              ),
-            ],
+    if (dashboard.hasError || fleet.hasError) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(
+            'Gagal memuat info perangkat: ${fleet.error ?? dashboard.error}',
           ),
-          const SizedBox(height: 10),
+        ),
+      );
+    }
+    final snapshot = dashboard.value;
+    final fleetData = fleet.value;
+    if (snapshot == null || fleetData == null) {
+      return const Center(
+        child: CircularProgressIndicator(color: AppTheme.primaryGreen),
+      );
+    }
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+      children: [
+        _FleetSummary(
+          devices: fleetData.devices,
+          cameras: fleetData.cameras,
+          fan: snapshot.fan,
+        ),
+        const SizedBox(height: 12),
+        if (fleetData.devices.isEmpty)
+          const _EmptyFleetCard(label: 'Belum ada device terdaftar')
+        else
+          for (final device in fleetData.devices) ...[
+            _DeviceCard(
+              icon: Icons.developer_board_rounded,
+              iconColor: AppTheme.primaryGreen,
+              title: device.name,
+              code: device.code,
+              status: device.status,
+              lastSeen: device.lastSeen,
+              details: const [
+                _DeviceDetail(
+                  icon: Icons.wifi_rounded,
+                  label: 'Koneksi',
+                  value: 'IoT device',
+                ),
+                _DeviceDetail(
+                  icon: Icons.sensors_rounded,
+                  label: 'Payload',
+                  value: 'Sensor node',
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+          ],
+        for (final camera in fleetData.cameras) ...[
           _DeviceCard(
             icon: Icons.videocam_rounded,
             iconColor: AppTheme.teal,
-            title: snapshot.camera.name,
-            code: snapshot.camera.code,
-            status: snapshot.camera.status,
-            lastSeen: snapshot.camera.lastSeen,
+            title: camera.name,
+            code: camera.code,
+            status: camera.status,
+            lastSeen: camera.lastSeen,
             details: const [
               _DeviceDetail(
                 icon: Icons.camera_indoor_rounded,
                 label: 'Kamera',
-                value: 'FHD Vision Cam',
+                value: 'Vision camera',
               ),
               _DeviceDetail(
                 icon: Icons.center_focus_strong,
                 label: 'AI',
-                value: 'YOLO detection',
+                value: 'Detection',
               ),
             ],
           ),
           const SizedBox(height: 10),
-          _FanDeviceCard(fan: snapshot.fan),
         ],
-      ),
-      loading: () => const Center(
-        child: CircularProgressIndicator(color: AppTheme.primaryGreen),
-      ),
-      error: (error, stackTrace) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Text('Gagal memuat info perangkat: $error'),
-        ),
-      ),
+        _FanDeviceCard(fan: snapshot.fan),
+      ],
     );
   }
 }
 
 class _FleetSummary extends StatelessWidget {
-  const _FleetSummary({required this.snapshot});
+  const _FleetSummary({
+    required this.devices,
+    required this.cameras,
+    required this.fan,
+  });
 
-  final DashboardSnapshot snapshot;
+  final List<DeviceStatus> devices;
+  final List<DeviceStatus> cameras;
+  final FanState fan;
 
   @override
   Widget build(BuildContext context) {
-    final onlineCount =
-        [snapshot.device.status, snapshot.camera.status, snapshot.fan.status]
-            .where(
-              (status) => status.toUpperCase() == 'ONLINE' || status == 'ON',
-            )
-            .length;
+    final statuses = [
+      ...devices.map((device) => device.status),
+      ...cameras.map((camera) => camera.status),
+      fan.status,
+    ];
+    final onlineCount = statuses
+        .where((status) => status.toUpperCase() == 'ONLINE' || status == 'ON')
+        .length;
 
     return SectionCard(
       padding: const EdgeInsets.all(14),
@@ -123,7 +150,7 @@ class _FleetSummary extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  '$onlineCount dari 3 aktif',
+                  '$onlineCount dari ${statuses.length} aktif',
                   style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -139,6 +166,22 @@ class _FleetSummary extends StatelessWidget {
             isPulse: true,
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _EmptyFleetCard extends StatelessWidget {
+  const _EmptyFleetCard({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: SectionCard(
+        child: Text(label, style: const TextStyle(color: AppTheme.textMuted)),
       ),
     );
   }

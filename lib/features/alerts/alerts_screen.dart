@@ -89,7 +89,7 @@ class AlertsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final dashboard = ref.watch(dashboardProvider);
+    final alertsState = ref.watch(alertsProvider);
 
     Future<void> markAllRead(List<SystemAlert> alerts) async {
       final unreadIds = [
@@ -101,12 +101,12 @@ class AlertsScreen extends ConsumerWidget {
       for (final id in unreadIds) {
         await repository.markAlertRead(id);
       }
+      ref.invalidate(alertsProvider);
       ref.invalidate(dashboardProvider);
     }
 
-    return dashboard.when(
-      data: (snapshot) {
-        final alerts = snapshot.alerts;
+    return alertsState.when(
+      data: (alerts) {
         final visibleAlerts = maxItems == null
             ? alerts
             : alerts.take(maxItems!).toList();
@@ -283,6 +283,7 @@ class _AlertCard extends ConsumerWidget {
     final id = alert.id;
     if (id == null || alert.isRead) return;
     await ref.read(nurseryRepositoryProvider).markAlertRead(id);
+    ref.invalidate(alertsProvider);
     ref.invalidate(dashboardProvider);
   }
 

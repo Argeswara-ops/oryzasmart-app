@@ -203,7 +203,10 @@ class VisionHistoryRepository {
   }
 
   Future<List<VisionScanRecord>> fetchRemote() async {
-    final response = await _client.dio.get<dynamic>('/vision/scans');
+    final response = await _client.dio.get<dynamic>(
+      '/vision/scans',
+      queryParameters: const {'per_page': 100},
+    );
     return _client
         .listEnvelope(response)
         .whereType<Map<String, dynamic>>()
