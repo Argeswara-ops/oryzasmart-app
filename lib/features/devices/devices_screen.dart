@@ -14,65 +14,74 @@ class DevicesScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final dashboard = ref.watch(dashboardProvider);
+    final devices = ref.watch(devicesProvider);
 
-    return dashboard.when(
-      data: (snapshot) => ListView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-        children: [
-          _FleetSummary(snapshot: snapshot),
-          const SizedBox(height: 12),
-          _DeviceCard(
-            icon: Icons.developer_board_rounded,
-            iconColor: AppTheme.primaryGreen,
-            title: snapshot.device.name,
-            code: snapshot.device.code,
-            status: snapshot.device.status,
-            lastSeen: snapshot.device.lastSeen,
-            details: const [
-              _DeviceDetail(
-                icon: Icons.wifi_rounded,
-                label: 'Koneksi',
-                value: 'Wi-Fi RSSI 98%',
-              ),
-              _DeviceDetail(
-                icon: Icons.sensors_rounded,
-                label: 'Payload',
-                value: 'Sensor node',
-              ),
-            ],
+    return devices.when(
+      data: (deviceItems) => dashboard.when(
+        data: (snapshot) => ListView(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+          children: [
+            _FleetSummary(devices: deviceItems, fan: snapshot.fan),
+            const SizedBox(height: 12),
+            if (deviceItems.isEmpty)
+              const SectionCard(
+                child: Text(
+                  'Belum ada ESP32 yang terdaftar pada API.',
+                  style: TextStyle(color: AppTheme.textMuted),
+                ),
+              )
+            else
+              for (final device in deviceItems) ...[
+                _DeviceCard(
+                  icon: Icons.developer_board_rounded,
+                  iconColor: AppTheme.primaryGreen,
+                  title: device.name,
+                  code: device.code,
+                  status: device.status,
+                  isOnline: device.isOnline,
+                  lastSeen: device.lastSeen,
+                  details: [
+                    _DeviceDetail(
+                      icon: Icons.location_on_outlined,
+                      label: 'Lokasi',
+                      value: device.location.isEmpty
+                          ? 'Belum diatur'
+                          : device.location,
+                    ),
+                    _DeviceDetail(
+                      icon: Icons.sensors_rounded,
+                      label: 'Sensor terbaru',
+                      value: device.latestSensor == null
+                          ? 'Belum ada data'
+                          : '${device.latestSensor!.temperature.toStringAsFixed(1)}°C · Air ${device.latestSensor!.waterLevel.toStringAsFixed(0)}%',
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+              ],
+            _FanDeviceCard(
+              fan: snapshot.fan,
+              deviceOnline: deviceItems.any((device) => device.isOnline),
+            ),
+          ],
+        ),
+        loading: () => const Center(
+          child: CircularProgressIndicator(color: AppTheme.primaryGreen),
+        ),
+        error: (error, stackTrace) => const Center(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Text('Status kipas belum tersedia.'),
           ),
-          const SizedBox(height: 10),
-          _DeviceCard(
-            icon: Icons.videocam_rounded,
-            iconColor: AppTheme.teal,
-            title: snapshot.camera.name,
-            code: snapshot.camera.code,
-            status: snapshot.camera.status,
-            lastSeen: snapshot.camera.lastSeen,
-            details: const [
-              _DeviceDetail(
-                icon: Icons.camera_indoor_rounded,
-                label: 'Kamera',
-                value: 'FHD Vision Cam',
-              ),
-              _DeviceDetail(
-                icon: Icons.center_focus_strong,
-                label: 'AI',
-                value: 'YOLO detection',
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          _FanDeviceCard(fan: snapshot.fan),
-        ],
+        ),
       ),
       loading: () => const Center(
         child: CircularProgressIndicator(color: AppTheme.primaryGreen),
       ),
-      error: (error, stackTrace) => Center(
+      error: (error, stackTrace) => const Center(
         child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Text('Gagal memuat info perangkat: $error'),
+          padding: EdgeInsets.all(24),
+          child: Text('Data perangkat belum tersedia dari API.'),
         ),
       ),
     );
@@ -80,18 +89,14 @@ class DevicesScreen extends ConsumerWidget {
 }
 
 class _FleetSummary extends StatelessWidget {
-  const _FleetSummary({required this.snapshot});
+  const _FleetSummary({required this.devices, required this.fan});
 
-  final DashboardSnapshot snapshot;
+  final List<DeviceStatus> devices;
+  final FanState fan;
 
   @override
   Widget build(BuildContext context) {
-    final onlineCount =
-        [snapshot.device.status, snapshot.camera.status, snapshot.fan.status]
-            .where(
-              (status) => status.toUpperCase() == 'ONLINE' || status == 'ON',
-            )
-            .length;
+    final onlineCount = devices.where((device) => device.isOnline).length;
 
     return SectionCard(
       padding: const EdgeInsets.all(14),
@@ -123,7 +128,7 @@ class _FleetSummary extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  '$onlineCount dari 3 aktif',
+                  '$onlineCount dari ${devices.length} ESP32 online · Kipas ${fan.status}',
                   style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -134,9 +139,9 @@ class _FleetSummary extends StatelessWidget {
             ),
           ),
           StatusChip(
-            label: 'LIVE',
-            color: AppTheme.primaryGreen,
-            isPulse: true,
+            label: onlineCount > 0 ? 'LIVE' : 'OFFLINE',
+            color: onlineCount > 0 ? AppTheme.primaryGreen : AppTheme.critical,
+            isPulse: onlineCount > 0,
           ),
         ],
       ),
@@ -151,6 +156,7 @@ class _DeviceCard extends StatelessWidget {
     required this.title,
     required this.code,
     required this.status,
+    required this.isOnline,
     required this.lastSeen,
     required this.details,
   });
@@ -160,14 +166,19 @@ class _DeviceCard extends StatelessWidget {
   final String title;
   final String code;
   final String status;
+  final bool isOnline;
   final DateTime lastSeen;
   final List<_DeviceDetail> details;
 
   @override
   Widget build(BuildContext context) {
     final age = DateTime.now().difference(lastSeen);
-    final isStale = age.inMinutes >= 5;
-    final statusColor = isStale ? AppTheme.warning : iconColor;
+    final isStale = isOnline && age.inMinutes >= 5;
+    final statusColor = isStale
+        ? AppTheme.warning
+        : isOnline
+        ? iconColor
+        : AppTheme.critical;
 
     return SectionCard(
       child: Column(
@@ -212,7 +223,7 @@ class _DeviceCard extends StatelessWidget {
               StatusChip(
                 label: isStale ? 'STALE' : status.toUpperCase(),
                 color: statusColor,
-                isPulse: !isStale,
+                isPulse: isOnline && !isStale,
               ),
             ],
           ),
@@ -226,7 +237,11 @@ class _DeviceCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
-          _LastSeenStrip(lastSeen: lastSeen, isStale: isStale),
+          _LastSeenStrip(
+            lastSeen: lastSeen,
+            isStale: isStale,
+            isOffline: !isOnline,
+          ),
         ],
       ),
     );
@@ -234,9 +249,10 @@ class _DeviceCard extends StatelessWidget {
 }
 
 class _FanDeviceCard extends ConsumerWidget {
-  const _FanDeviceCard({required this.fan});
+  const _FanDeviceCard({required this.fan, required this.deviceOnline});
 
   final FanState fan;
+  final bool deviceOnline;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -250,6 +266,7 @@ class _FanDeviceCard extends ConsumerWidget {
     final fanAsync = ref.watch(fanControllerProvider);
     final fanState = fanAsync.value ?? fan;
     final isBusy = ref.watch(fanControlBusyProvider);
+    final canControl = deviceOnline && fanState.deviceOnline;
     final isOn = fanState.status == 'ON';
     final color = isOn ? AppTheme.primaryGreen : AppTheme.textMuted;
 
@@ -291,7 +308,7 @@ class _FanDeviceCard extends ConsumerWidget {
           Switch(
             value: isOn,
             activeThumbColor: AppTheme.primaryGreen,
-            onChanged: isBusy
+            onChanged: isBusy || !canControl
                 ? null
                 : (value) {
                     ref
@@ -317,14 +334,23 @@ class _FanDeviceCard extends ConsumerWidget {
 }
 
 class _LastSeenStrip extends StatelessWidget {
-  const _LastSeenStrip({required this.lastSeen, required this.isStale});
+  const _LastSeenStrip({
+    required this.lastSeen,
+    required this.isStale,
+    required this.isOffline,
+  });
 
   final DateTime lastSeen;
   final bool isStale;
+  final bool isOffline;
 
   @override
   Widget build(BuildContext context) {
-    final color = isStale ? AppTheme.warning : AppTheme.primaryGreen;
+    final color = isOffline
+        ? AppTheme.critical
+        : isStale
+        ? AppTheme.warning
+        : AppTheme.primaryGreen;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),

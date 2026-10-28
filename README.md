@@ -7,7 +7,7 @@ ORYZA SMART adalah aplikasi Flutter untuk pemantauan pembibitan padi berbasis Io
 - Autentikasi pengguna melalui Laravel Sanctum.
 - Mode tamu tanpa login dengan akses terbatas hanya ke Oryza Vision.
 - Inferensi penyakit dan hama secara lokal menggunakan model TensorFlow Lite.
-- Dasbor kondisi pembibitan, sensor, perangkat, kamera, deteksi, rekomendasi, dan notifikasi.
+- Dasbor kondisi pembibitan, sensor, ESP32, kipas, rekomendasi, dan notifikasi.
 - Riwayat sensor untuk periode hari ini, 7 hari, dan 30 hari.
 - Kontrol kipas dalam mode manual atau otomatis.
 - Penyimpanan lokal data hasil sinkronisasi terakhir untuk penggunaan offline.
@@ -84,6 +84,7 @@ Buat berkas `.env` pada root proyek:
 
 ```env
 API_BASE_URL=http://10.0.2.2:8000/api
+DEVICE_ID=ESP32-01
 ```
 
 Gunakan alamat yang sesuai dengan target:
@@ -112,7 +113,7 @@ Password : password
 
 ## Perilaku Offline dan Sinkronisasi
 
-1. Respons dasbor, riwayat sensor, dan deteksi yang berhasil disimpan ke cache lokal.
+1. Respons dasbor, perangkat, riwayat sensor, dan ambang yang berhasil disimpan ke cache lokal.
 2. Ketika API tidak dapat dijangkau, repository mengembalikan cache tersebut sehingga layar tetap dapat digunakan.
 3. Banner koneksi memberi informasi bahwa aplikasi sedang offline dan menampilkan data sinkron terakhir.
 4. Polling tetap berjalan. Respons API berikutnya yang berhasil mengubah status menjadi online dan mengganti cache dengan data terbaru.
@@ -126,10 +127,11 @@ Jika perangkat belum pernah melakukan sinkronisasi, aplikasi menampilkan pesan o
 POST /api/login
 POST /api/logout
 GET  /api/dashboard
+GET  /api/devices
 GET  /api/sensors/latest
 GET  /api/sensors/history?range=today|7days|30days
-GET  /api/detections
-GET  /api/detections/latest
+GET  /api/thresholds
+PUT  /api/thresholds/{sensorType}
 GET  /api/alerts
 GET  /api/recommendations
 GET  /api/actuators/fan/status

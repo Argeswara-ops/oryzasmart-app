@@ -1,9 +1,7 @@
 class DashboardSnapshot {
   const DashboardSnapshot({
     required this.device,
-    required this.camera,
     required this.sensor,
-    required this.detection,
     required this.fan,
     required this.alerts,
     required this.recommendation,
@@ -12,9 +10,7 @@ class DashboardSnapshot {
   });
 
   final DeviceStatus device;
-  final DeviceStatus camera;
   final SensorReading sensor;
-  final Detection detection;
   final FanState fan;
   final List<SystemAlert> alerts;
   final Recommendation recommendation;
@@ -23,9 +19,7 @@ class DashboardSnapshot {
 
   Map<String, dynamic> toJson() => {
     'device': device.toJson(),
-    'camera': camera.toJson(),
     'sensor': sensor.toJson(),
-    'detection': detection.toJson(),
     'fan': fan.toJson(),
     'alerts': alerts.map((alert) => alert.toJson()).toList(),
     'recommendation': recommendation.toJson(),
@@ -44,13 +38,7 @@ class DashboardSnapshot {
         fallbackCode: 'ESP32-01',
         fallbackName: 'Nursery Controller',
       ),
-      camera: DeviceStatus.fromJson(
-        _map(json['camera']),
-        fallbackCode: 'CAM-01',
-        fallbackName: 'Camera 01',
-      ),
       sensor: SensorReading.fromJson(_map(json['sensor'])),
-      detection: Detection.fromJson(_map(json['detection'])),
       fan: FanState.fromJson(_map(json['fan'])),
       alerts: alerts,
       recommendation: Recommendation.fromJson(_map(json['recommendation'])),
@@ -72,6 +60,9 @@ class SensorReading {
     required this.potassium,
     required this.light,
     required this.ultrasonic,
+    this.lightPercent = 0,
+    this.uvIndex = 0,
+    this.waterLevel = 0,
     required this.createdAt,
   });
 
@@ -83,9 +74,13 @@ class SensorReading {
   final double potassium;
   final double light;
   final double ultrasonic;
+  final double lightPercent;
+  final double uvIndex;
+  final double waterLevel;
   final DateTime createdAt;
 
   factory SensorReading.fromJson(Map<String, dynamic> json) {
+    final water = json['water_level'];
     return SensorReading(
       deviceId: '${json['device_id'] ?? json['device_code'] ?? 'ESP32-01'}',
       temperature: _toDouble(json['temperature']),
@@ -94,7 +89,18 @@ class SensorReading {
       phosphorus: _toDouble(json['phosphorus']),
       potassium: _toDouble(json['potassium']),
       light: _toDouble(json['light']),
-      ultrasonic: _toDouble(json['ultrasonic']),
+      ultrasonic: _toDouble(
+        json['distance_cm'] ??
+            json['ultrasonic'] ??
+            (water is Map<String, dynamic> ? water['distance_cm'] : null),
+      ),
+      lightPercent: _toDouble(json['light_percent'] ?? json['light']),
+      uvIndex: _toDouble(json['uv_index']),
+      waterLevel: _toDouble(
+        json['water_level_percent'] ??
+            json['level_percent'] ??
+            (water is Map<String, dynamic> ? water['percent'] : water),
+      ),
       createdAt:
           _toDateTime(json['created_at'] ?? json['recorded_at']) ??
           DateTime.now(),
@@ -109,51 +115,12 @@ class SensorReading {
     'phosphorus': phosphorus,
     'potassium': potassium,
     'light': light,
+    'light_percent': lightPercent,
+    'uv_index': uvIndex,
     'ultrasonic': ultrasonic,
+    'distance_cm': ultrasonic,
+    'level_percent': waterLevel,
     'created_at': createdAt.toIso8601String(),
-  };
-}
-
-class Detection {
-  const Detection({
-    required this.cameraId,
-    required this.type,
-    required this.className,
-    required this.confidence,
-    required this.image,
-    required this.detectedAt,
-  });
-
-  final String cameraId;
-  final String type;
-  final String className;
-  final double confidence;
-  final String image;
-  final DateTime detectedAt;
-
-  factory Detection.fromJson(Map<String, dynamic> json) {
-    final camera = json['camera'];
-    return Detection(
-      cameraId: camera is Map<String, dynamic>
-          ? '${camera['camera_code'] ?? camera['code'] ?? 'CAM-01'}'
-          : '${json['camera_code'] ?? json['camera'] ?? json['camera_id'] ?? 'CAM-01'}',
-      type: _normalizeType(json['detection_type'] ?? json['type']),
-      className: '${json['class_name'] ?? json['class'] ?? 'unknown'}',
-      confidence: _toDouble(json['confidence']),
-      image: '${json['image_path'] ?? json['image'] ?? ''}',
-      detectedAt:
-          _toDateTime(json['detected_at'] ?? json['created_at']) ??
-          DateTime.now(),
-    );
-  }
-
-  Map<String, dynamic> toJson() => {
-    'camera_id': cameraId,
-    'type': type,
-    'class_name': className,
-    'confidence': confidence,
-    'image': image,
-    'detected_at': detectedAt.toIso8601String(),
   };
 }
 
@@ -193,12 +160,20 @@ class DeviceStatus {
     required this.name,
     required this.status,
     required this.lastSeen,
-  });
+    this.location = '',
+    bool? isOnline,
+    this.fan,
+    this.latestSensor,
+  }) : isOnline = isOnline ?? status == 'ONLINE';
 
   final String code;
   final String name;
   final String status;
   final DateTime lastSeen;
+  final String location;
+  final bool isOnline;
+  final FanState? fan;
+  final SensorReading? latestSensor;
 
   factory DeviceStatus.fromJson(
     Map<String, dynamic> json, {
@@ -206,14 +181,28 @@ class DeviceStatus {
     required String fallbackName,
     String? fallbackStatus,
   }) {
+    final status = _normalizeStatus(
+      json['status'] ?? fallbackStatus ?? 'OFFLINE',
+    );
     return DeviceStatus(
-      code:
-          '${json['code'] ?? json['device_code'] ?? json['camera_id'] ?? fallbackCode}',
+      code: '${json['code'] ?? json['device_code'] ?? fallbackCode}',
       name: '${json['name'] ?? fallbackName}',
-      status: _normalizeStatus(json['status'] ?? fallbackStatus ?? 'OFFLINE'),
+      status: status,
       lastSeen:
           _toDateTime(json['last_seen'] ?? json['updated_at']) ??
           DateTime.now(),
+      location: '${json['location'] ?? ''}',
+      isOnline: json['is_online'] is bool
+          ? json['is_online'] as bool
+          : status == 'ONLINE',
+      fan: json['fan'] is Map<String, dynamic>
+          ? FanState.fromJson(json['fan'] as Map<String, dynamic>)
+          : null,
+      latestSensor: json['latest_sensor'] is Map<String, dynamic>
+          ? SensorReading.fromJson(
+              json['latest_sensor'] as Map<String, dynamic>,
+            )
+          : null,
     );
   }
 
@@ -222,31 +211,77 @@ class DeviceStatus {
     'name': name,
     'status': status,
     'last_seen': lastSeen.toIso8601String(),
+    'location': location,
+    'is_online': isOnline,
+    'fan': fan?.toJson(),
+    'latest_sensor': latestSensor?.toJson(),
   };
 }
 
 class FanState {
-  const FanState({required this.status, required this.mode});
+  const FanState({
+    required this.status,
+    required this.mode,
+    this.deviceOnline = true,
+  });
 
   final String status;
   final String mode;
+  final bool deviceOnline;
 
-  FanState copyWith({String? status, String? mode}) {
-    return FanState(status: status ?? this.status, mode: mode ?? this.mode);
+  FanState copyWith({String? status, String? mode, bool? deviceOnline}) {
+    return FanState(
+      status: status ?? this.status,
+      mode: mode ?? this.mode,
+      deviceOnline: deviceOnline ?? this.deviceOnline,
+    );
   }
 
   factory FanState.fromJson(Map<String, dynamic> json) {
-    final nested = json['fan'];
+    final nested = json['fan'] ?? json['actuator'];
     if (nested is Map<String, dynamic>) {
       return FanState.fromJson(nested);
     }
     return FanState(
       status: _normalizeStatus(json['status'] ?? 'OFF'),
       mode: _normalizeStatus(json['mode'] ?? 'MANUAL'),
+      deviceOnline: json['device_online'] is bool
+          ? json['device_online'] as bool
+          : true,
     );
   }
 
-  Map<String, dynamic> toJson() => {'status': status, 'mode': mode};
+  Map<String, dynamic> toJson() => {
+    'status': status,
+    'mode': mode,
+    'device_online': deviceOnline,
+  };
+}
+
+class SensorThreshold {
+  const SensorThreshold({
+    required this.sensorType,
+    required this.minValue,
+    required this.maxValue,
+  });
+
+  final String sensorType;
+  final double minValue;
+  final double maxValue;
+
+  factory SensorThreshold.fromJson(Map<String, dynamic> json) {
+    return SensorThreshold(
+      sensorType: '${json['sensor_type'] ?? ''}'.toLowerCase(),
+      minValue: _toDouble(json['min_value']),
+      maxValue: _toDouble(json['max_value']),
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'sensor_type': sensorType,
+    'min_value': minValue,
+    'max_value': maxValue,
+  };
 }
 
 class SystemAlert {
@@ -346,7 +381,5 @@ DateTime? _toDateTime(Object? value) {
   if (value == null) return null;
   return DateTime.tryParse('$value');
 }
-
-String _normalizeType(Object? value) => '${value ?? 'UNKNOWN'}'.toLowerCase();
 
 String _normalizeStatus(Object? value) => '${value ?? ''}'.toUpperCase();

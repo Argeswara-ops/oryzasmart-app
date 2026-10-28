@@ -571,15 +571,15 @@ class _MetricSpec {
       ),
       'light' => _MetricSpec(
         label: 'Cahaya',
-        unit: 'lux',
+        unit: '%',
         color: AppTheme.teal,
-        valueOf: (reading) => reading.light,
+        valueOf: (reading) => reading.lightPercent,
       ),
       'water' => _MetricSpec(
-        label: 'Level air',
-        unit: 'cm',
+        label: 'Ketinggian air',
+        unit: '%',
         color: AppTheme.infoBlue,
-        valueOf: (reading) => reading.ultrasonic,
+        valueOf: (reading) => reading.waterLevel,
       ),
       _ => _MetricSpec(
         label: 'Suhu',

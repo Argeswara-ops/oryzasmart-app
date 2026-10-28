@@ -87,14 +87,11 @@ class _DashboardContent extends ConsumerWidget {
         ),
         const SizedBox(height: 12),
         _DashboardSection(
-          title: 'Kontrol AI',
-          subtitle: 'Kipas dan deteksi terbaru',
-          child: Column(
-            children: [
-              _FanControl(fan: snapshot.fan),
-              const SizedBox(height: 10),
-              _LatestDetection(detection: snapshot.detection),
-            ],
+          title: 'Kontrol Kipas',
+          subtitle: 'Status aktuator dari API',
+          child: _FanControl(
+            fan: snapshot.fan,
+            deviceOnline: snapshot.device.isOnline,
           ),
         ),
       ],
@@ -255,8 +252,8 @@ class _ConditionBanner extends StatelessWidget {
               const SizedBox(width: 8),
               Expanded(
                 child: _BannerMetric(
-                  label: 'Deteksi',
-                  value: snapshot.detection.type.toUpperCase(),
+                  label: 'Ketinggian air',
+                  value: '${snapshot.sensor.waterLevel.toStringAsFixed(0)}%',
                 ),
               ),
             ],
@@ -296,15 +293,15 @@ class _SensorGrid extends StatelessWidget {
       _SensorItem(
         icon: Icons.wb_sunny_rounded,
         label: 'Cahaya',
-        value: '${sensor.light.toStringAsFixed(0)} lux',
+        value: '${sensor.lightPercent.toStringAsFixed(0)}%',
         status: 'OPTIMAL',
         accentColor: AppTheme.warning,
       ),
       _SensorItem(
         icon: Icons.waves_rounded,
-        label: 'Air',
-        value: '${sensor.ultrasonic.toStringAsFixed(0)} cm',
-        status: 'STABIL',
+        label: 'Ketinggian Air',
+        value: '${sensor.waterLevel.toStringAsFixed(0)}%',
+        status: sensor.waterLevel < 30 ? 'RENDAH' : 'STABIL',
         accentColor: AppTheme.infoBlue,
       ),
       _SensorItem(
@@ -329,10 +326,10 @@ class _SensorGrid extends StatelessWidget {
         accentColor: AppTheme.primaryGreenDark,
       ),
       _SensorItem(
-        icon: Icons.schedule_rounded,
-        label: 'Data',
-        value: DateFormat.Hm().format(sensor.createdAt),
-        status: 'LIVE',
+        icon: Icons.wb_twilight_rounded,
+        label: 'Indeks UV',
+        value: sensor.uvIndex.toStringAsFixed(1),
+        status: sensor.uvIndex >= 6 ? 'TINGGI' : 'NORMAL',
         accentColor: AppTheme.teal,
       ),
     ];
@@ -415,99 +412,11 @@ class _SensorCard extends StatelessWidget {
   }
 }
 
-class _LatestDetection extends StatelessWidget {
-  const _LatestDetection({required this.detection});
-
-  final Detection detection;
-
-  @override
-  Widget build(BuildContext context) {
-    final isHealthy = detection.type == 'healthy';
-    final color = isHealthy ? AppTheme.primaryGreen : AppTheme.warning;
-
-    return SectionCard(
-      child: Row(
-        children: [
-          Container(
-            width: 72,
-            height: 72,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: color.withValues(alpha: 0.28)),
-            ),
-            child: Icon(
-              isHealthy ? Icons.verified_rounded : Icons.center_focus_strong,
-              color: color,
-              size: 30,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Expanded(
-                      child: Text(
-                        'Deteksi terbaru',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: AppTheme.textMuted,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    StatusChip(
-                      label: '${(detection.confidence * 100).round()}%',
-                      color: color,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  detection.className,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w900,
-                    color: AppTheme.textStrong,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '${detection.type.toUpperCase()} - ${detection.cameraId}',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppTheme.textMuted,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Text(
-                  'Terdeteksi ${DateFormat.Hm().format(detection.detectedAt)} WIB',
-                  style: const TextStyle(
-                    fontSize: 11,
-                    color: Color(0xFF94A3B8),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _FanControl extends ConsumerWidget {
-  const _FanControl({required this.fan});
+  const _FanControl({required this.fan, required this.deviceOnline});
 
   final FanState fan;
+  final bool deviceOnline;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -521,6 +430,7 @@ class _FanControl extends ConsumerWidget {
     final fanAsync = ref.watch(fanControllerProvider);
     final fanState = fanAsync.value ?? fan;
     final isBusy = ref.watch(fanControlBusyProvider);
+    final canControl = deviceOnline && fanState.deviceOnline;
 
     final isFanOn = fanState.status == 'ON';
 
@@ -608,7 +518,7 @@ class _FanControl extends ConsumerWidget {
                 ),
               ],
               selected: {fanState.mode},
-              onSelectionChanged: isBusy
+              onSelectionChanged: isBusy || !canControl
                   ? null
                   : (value) {
                       ref
@@ -640,7 +550,7 @@ class _FanControl extends ConsumerWidget {
                   Switch(
                     value: isFanOn,
                     activeThumbColor: AppTheme.primaryGreen,
-                    onChanged: isBusy
+                    onChanged: isBusy || !canControl
                         ? null
                         : (value) {
                             ref
@@ -649,6 +559,17 @@ class _FanControl extends ConsumerWidget {
                           },
                   ),
                 ],
+              ),
+            ),
+          ],
+          if (!canControl) ...[
+            const SizedBox(height: 10),
+            const Text(
+              'Kontrol dinonaktifkan karena ESP32 sedang offline.',
+              style: TextStyle(
+                color: AppTheme.critical,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ],
@@ -1004,8 +925,6 @@ class _Condition {
 
   static _Condition fromSnapshot(DashboardSnapshot snapshot) {
     final status = snapshot.recommendation.status.toUpperCase();
-    final hasDisease = snapshot.detection.type == 'disease';
-    final hasPest = snapshot.detection.type == 'pest';
 
     if (status.contains('CRITICAL')) {
       return const _Condition(
@@ -1015,7 +934,7 @@ class _Condition {
         borderColor: Color(0xFF991B1B),
       );
     }
-    if (status.contains('PERLU') || hasDisease || hasPest) {
+    if (status.contains('PERLU') || status.contains('WARNING')) {
       return const _Condition(
         title: 'Perlu Perhatian',
         icon: Icons.warning_amber_rounded,

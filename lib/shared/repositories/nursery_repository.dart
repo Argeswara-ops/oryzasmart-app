@@ -19,12 +19,23 @@ class NurseryRepository {
   static const _userRoleKey = 'oryza_auth_user_role';
   static const _dashboardCacheKey = 'oryza_dashboard_cache_v1';
   static const _sensorHistoryCachePrefix = 'oryza_sensor_history_cache_v1_';
-  static const _detectionsCacheKey = 'oryza_detections_cache_v1';
+  static const _devicesCacheKey = 'oryza_devices_cache_v1';
+  static const _thresholdsCacheKey = 'oryza_thresholds_cache_v1';
   static const _lastSyncKey = 'oryza_last_sync_at';
+  static const _supportedThresholdTypes = {
+    'temperature',
+    'humidity',
+    'nitrogen',
+    'phosphorus',
+    'potassium',
+    'light_percent',
+    'uv_index',
+    'water_level',
+  };
   static const _secureStorage = FlutterSecureStorage();
 
   final ApiClient _client;
-  FanState _fan = const FanState(status: 'ON', mode: 'AUTO');
+  FanState _fan = const FanState(status: 'OFF', mode: 'AUTO');
   final Set<int> _readAlertIds = {};
 
   Future<AuthUser> login({
@@ -101,7 +112,7 @@ class NurseryRepository {
       if (data.isEmpty) {
         throw const ApiException('Response dashboard Laravel kosong.');
       }
-      final snapshot = _dashboardFromApi(data);
+      final snapshot = await _dashboardFromApi(data);
       await _saveJson(_dashboardCacheKey, snapshot.toJson());
       await _recordSuccessfulSync();
       return snapshot;
@@ -112,11 +123,10 @@ class NurseryRepository {
     }
   }
 
-  DashboardSnapshot _dashboardFromApi(Map<String, dynamic> data) {
-    final fallback = _mockDashboard();
-    final alerts = _applyReadState(
-      _alertsFrom(data['alerts'], fallback.alerts),
-    );
+  Future<DashboardSnapshot> _dashboardFromApi(Map<String, dynamic> data) async {
+    final alerts = data['alerts'] is List
+        ? _applyReadState(_alertsFrom(data['alerts'], const []))
+        : _applyReadState(await getAlerts());
     final localUnreadAlerts = alerts.where((alert) => !alert.isRead).length;
     final serverUnreadAlerts = _toInt(data['unread_alerts']);
     final unreadAlerts = serverUnreadAlerts > localUnreadAlerts
@@ -130,17 +140,8 @@ class NurseryRepository {
         fallbackName: 'Nursery Controller',
         fallbackStatus: data['device_status']?.toString(),
       ),
-      camera: DeviceStatus.fromJson(
-        _mapOf(data['camera']),
-        fallbackCode: 'CAM-01',
-        fallbackName: 'Camera 01',
-        fallbackStatus: 'ONLINE',
-      ),
       sensor: SensorReading.fromJson(
         _mapOf(data['sensors'] ?? data['sensor'] ?? data['latest_sensor']),
-      ),
-      detection: Detection.fromJson(
-        _mapOf(data['latest_detection'] ?? data['detection']),
       ),
       fan: FanState.fromJson(_mapOf(data['fan'])),
       alerts: alerts,
@@ -148,10 +149,7 @@ class NurseryRepository {
           ? Recommendation.fromJson(
               data['recommendation'] as Map<String, dynamic>,
             )
-          : _recommendationFromStatus(
-              '${data['system_status'] ?? 'NORMAL'}',
-              fallback.recommendation,
-            ),
+          : _recommendationFromStatus('${data['system_status'] ?? 'NORMAL'}'),
       systemStatus: '${data['system_status'] ?? 'NORMAL'}',
       unreadAlerts: unreadAlerts,
     );
@@ -193,7 +191,7 @@ class NurseryRepository {
   Future<List<DeviceStatus>> getDevices() async {
     try {
       final response = await _client.dio.get<dynamic>('/devices');
-      return _client
+      final devices = _client
           .listEnvelope(response)
           .whereType<Map<String, dynamic>>()
           .map(
@@ -204,74 +202,20 @@ class NurseryRepository {
             ),
           )
           .toList();
-    } on DioException {
-      return [_mockDashboard().device];
-    }
-  }
-
-  Future<List<DeviceStatus>> getCameras() async {
-    try {
-      final response = await _client.dio.get<dynamic>('/cameras');
-      return _client
-          .listEnvelope(response)
-          .whereType<Map<String, dynamic>>()
-          .map(
-            (item) => DeviceStatus.fromJson(
-              item,
-              fallbackCode: 'CAM-01',
-              fallbackName: 'Camera 01',
-            ),
-          )
-          .toList();
-    } on DioException {
-      return [_mockDashboard().camera];
-    }
-  }
-
-  Future<List<Detection>> getDetections({String? type, String? camera}) async {
-    try {
-      final queryParameters = <String, dynamic>{
-        if (type != null && type != 'all') 'type': type,
-      };
-      if (camera != null) queryParameters['camera'] = camera;
-
-      final response = await _client.dio.get<dynamic>(
-        '/detections',
-        queryParameters: queryParameters,
-      );
-      final detections = _client
-          .listEnvelope(response)
-          .whereType<Map<String, dynamic>>()
-          .map(Detection.fromJson)
-          .toList();
       await _saveJson(
-        _detectionsCacheKey,
-        detections.map((detection) => detection.toJson()).toList(),
+        _devicesCacheKey,
+        devices.map((device) => device.toJson()).toList(),
       );
-      await _recordSuccessfulSync();
-      return detections;
+      return devices;
     } on DioException {
-      final cached = await _loadListCache(
-        _detectionsCacheKey,
-        Detection.fromJson,
+      return _loadListCache(
+        _devicesCacheKey,
+        (item) => DeviceStatus.fromJson(
+          item,
+          fallbackCode: 'ESP32',
+          fallbackName: 'Perangkat ESP32',
+        ),
       );
-      return cached.where((detection) {
-        final matchesType =
-            type == null || type == 'all' || detection.type == type;
-        final matchesCamera = camera == null || detection.cameraId == camera;
-        return matchesType && matchesCamera;
-      }).toList();
-    }
-  }
-
-  Future<Detection> getLatestDetection() async {
-    try {
-      final response = await _client.dio.get<Map<String, dynamic>>(
-        '/detections/latest',
-      );
-      return Detection.fromJson(_client.dataEnvelope(response));
-    } on DioException {
-      return _mockDashboard().detection;
     }
   }
 
@@ -309,7 +253,7 @@ class NurseryRepository {
           .toList();
       return _applyReadState(alerts);
     } on DioException {
-      return _applyReadState(_mockDashboard().alerts);
+      return const [];
     }
   }
 
@@ -344,7 +288,8 @@ class NurseryRepository {
     await prefs.remove(_userEmailKey);
     await prefs.remove(_userRoleKey);
     await prefs.remove(_dashboardCacheKey);
-    await prefs.remove(_detectionsCacheKey);
+    await prefs.remove(_devicesCacheKey);
+    await prefs.remove(_thresholdsCacheKey);
     await prefs.remove(_lastSyncKey);
     final historyKeys = prefs.getKeys().where(
       (key) => key.startsWith(_sensorHistoryCachePrefix),
@@ -423,6 +368,7 @@ class NurseryRepository {
     try {
       final response = await _client.dio.get<Map<String, dynamic>>(
         '/actuators/fan/status',
+        queryParameters: {'device_id': AppConfig.deviceId},
       );
       _fan = FanState.fromJson(_client.dataEnvelope(response));
       return _fan;
@@ -432,7 +378,10 @@ class NurseryRepository {
           'Kontrol kipas tidak tersedia saat offline. Data terakhir tetap ditampilkan.',
         );
       }
-      rethrow;
+      throw ApiException(
+        _messageFromResponse(error.response?.data) ??
+            'Status kipas tidak dapat dibaca dari API.',
+      );
     }
   }
 
@@ -444,39 +393,56 @@ class NurseryRepository {
     return _controlFan(command: _fan.status, mode: mode);
   }
 
-  Future<void> updateThreshold({
+  Future<SensorThreshold> updateThreshold({
     required String sensorType,
     required double minValue,
     required double maxValue,
   }) async {
-    await _client.dio.put<Map<String, dynamic>>(
+    final response = await _client.dio.put<Map<String, dynamic>>(
       '/thresholds/$sensorType',
       data: {'min_value': minValue, 'max_value': maxValue},
     );
+    final updated = SensorThreshold.fromJson(_client.dataEnvelope(response));
+    final cached = await _loadListCache(
+      _thresholdsCacheKey,
+      SensorThreshold.fromJson,
+    );
+    await _saveJson(_thresholdsCacheKey, [
+      for (final item in cached)
+        if (item.sensorType != updated.sensorType) item.toJson(),
+      updated.toJson(),
+    ]);
+    return updated;
   }
 
-  Future<List<Map<String, dynamic>>> getThresholds() async {
+  Future<List<SensorThreshold>> getThresholds() async {
     try {
-      final response = await _client.dio.get<Map<String, dynamic>>(
-        '/thresholds',
-      );
-      final data = _client.dataEnvelope(response);
-      if (data['thresholds'] is List) {
-        return (data['thresholds'] as List)
-            .whereType<Map<String, dynamic>>()
-            .toList();
-      }
-      return data.entries
-          .where((entry) => entry.value is Map<String, dynamic>)
-          .map(
-            (entry) => {
-              'sensor_type': entry.key,
-              ...(entry.value as Map<String, dynamic>),
-            },
+      final response = await _client.dio.get<dynamic>('/thresholds');
+      final thresholds = _client
+          .listEnvelope(response)
+          .whereType<Map<String, dynamic>>()
+          .map(SensorThreshold.fromJson)
+          .where(
+            (threshold) =>
+                _supportedThresholdTypes.contains(threshold.sensorType),
           )
           .toList();
+      await _saveJson(
+        _thresholdsCacheKey,
+        thresholds.map((threshold) => threshold.toJson()).toList(),
+      );
+      return thresholds;
     } on DioException {
-      return const [];
+      final cached = await _loadListCache(
+        _thresholdsCacheKey,
+        SensorThreshold.fromJson,
+      );
+      return cached
+          .where(
+            (threshold) =>
+                _supportedThresholdTypes.contains(threshold.sensorType),
+          )
+          .toList();
     }
   }
 
@@ -505,7 +471,10 @@ class NurseryRepository {
           'Kontrol kipas tidak tersedia saat offline. Data terakhir tetap ditampilkan.',
         );
       }
-      rethrow;
+      throw ApiException(
+        _messageFromResponse(error.response?.data) ??
+            'Perintah kipas ditolak oleh API.',
+      );
     }
     return _fan;
   }
@@ -547,10 +516,7 @@ class NurseryRepository {
     ];
   }
 
-  Recommendation _recommendationFromStatus(
-    String status,
-    Recommendation fallback,
-  ) {
+  Recommendation _recommendationFromStatus(String status) {
     final normalized = status.toUpperCase();
     if (normalized == 'NORMAL') {
       return const Recommendation(
@@ -559,10 +525,17 @@ class NurseryRepository {
         message: 'Lanjutkan pemantauan berkala.',
       );
     }
+    if (normalized == 'CRITICAL') {
+      return const Recommendation(
+        status: 'CRITICAL',
+        cause: 'Satu atau lebih sensor berada pada kondisi kritis.',
+        message: 'Periksa ESP32, sensor, ketinggian air, dan kipas segera.',
+      );
+    }
     return Recommendation(
       status: normalized,
-      cause: fallback.cause,
-      message: fallback.message,
+      cause: 'Satu atau lebih sensor berada di luar ambang normal.',
+      message: 'Periksa nilai sensor dan kondisi perangkat lapangan.',
     );
   }
 
@@ -578,34 +551,13 @@ class NurseryRepository {
 
   DashboardSnapshot _mockDashboard() {
     final now = DateTime.now();
-    final alerts = _applyReadState([
-      SystemAlert(
-        id: 1,
-        level: 'WARNING',
-        title: 'Kelembapan tinggi',
-        message: 'Kelembapan udara berada di 81%.',
-        createdAt: now.subtract(const Duration(minutes: 8)),
-      ),
-      SystemAlert(
-        id: 2,
-        level: 'WARNING',
-        title: 'Rice Blast terdeteksi',
-        message: 'CAM-01 mendeteksi penyakit dengan confidence 92%.',
-        createdAt: now.subtract(const Duration(minutes: 6)),
-      ),
-    ]);
+    const alerts = <SystemAlert>[];
     return DashboardSnapshot(
       device: DeviceStatus(
         code: 'ESP32-01',
         name: 'Nursery Controller',
         status: 'ONLINE',
         lastSeen: now.subtract(const Duration(seconds: 18)),
-      ),
-      camera: DeviceStatus(
-        code: 'CAM-01',
-        name: 'Camera 01',
-        status: 'ONLINE',
-        lastSeen: now.subtract(const Duration(seconds: 31)),
       ),
       sensor: SensorReading(
         deviceId: 'ESP32-01',
@@ -614,25 +566,19 @@ class NurseryRepository {
         nitrogen: 40,
         phosphorus: 22,
         potassium: 31,
-        light: 720,
+        light: 65,
+        lightPercent: 65,
+        uvIndex: 3.2,
         ultrasonic: 14,
+        waterLevel: 64,
         createdAt: now,
-      ),
-      detection: Detection(
-        cameraId: 'CAM-01',
-        type: 'disease',
-        className: 'Rice Blast',
-        confidence: 0.92,
-        image: 'detections/cam01-001.jpg',
-        detectedAt: now.subtract(const Duration(minutes: 6)),
       ),
       fan: _fan,
       alerts: alerts,
       recommendation: const Recommendation(
         status: 'PERLU PERHATIAN',
-        cause: 'Kelembapan udara tinggi dan Rice Blast terdeteksi.',
-        message:
-            'Periksa tanaman pada area CAM-01 dan jaga sirkulasi udara pembibitan.',
+        cause: 'Satu atau lebih sensor berada di luar ambang normal.',
+        message: 'Periksa nilai sensor dan kondisi perangkat lapangan.',
       ),
       systemStatus: 'WARNING',
       unreadAlerts: alerts.where((alert) => !alert.isRead).length,

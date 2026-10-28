@@ -43,8 +43,8 @@ class _AppShellState extends ConsumerState<AppShell> {
   int _targetIndexForAlert(SystemAlert alert) {
     final text = '${alert.title} ${alert.message}'.toLowerCase();
     if (text.contains('riwayat') || text.contains('history')) return 3;
-    // Alert perangkat/kamera tetap diarahkan ke dashboard. Tab Vision sekarang
-    // khusus scan manual dan tidak lagi memiliki detail CAM.
+    // Alert perangkat tetap diarahkan ke dashboard. Tab Vision khusus scan
+    // manual dari kamera/galeri perangkat pengguna.
     return 0;
   }
 

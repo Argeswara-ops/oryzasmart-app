@@ -12,7 +12,14 @@ class AppConfig {
     }
   }
 
-  static const deviceId = 'ESP32-01';
+  static String get deviceId {
+    try {
+      return dotenv.env['DEVICE_ID'] ?? 'ESP32-01';
+    } catch (_) {
+      return 'ESP32-01';
+    }
+  }
+
   static const dataFlow =
       'Flutter -> Laravel API -> MQTT HiveMQ -> Wokwi ESP32';
 }

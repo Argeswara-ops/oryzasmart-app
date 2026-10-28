@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../../core/api/api_providers.dart';
 import '../../shared/models/nursery_models.dart';
@@ -23,20 +22,15 @@ final sensorHistoryProvider =
       );
     });
 
-final detectionsProvider = StreamProvider<List<Detection>>((ref) {
+final devicesProvider = StreamProvider<List<DeviceStatus>>((ref) {
   final repository = ref.watch(nurseryRepositoryProvider);
-  return _poll(repository.getDetections, _historyRefreshInterval);
+  return _poll(repository.getDevices, _historyRefreshInterval);
 });
 
-final visionFocusAlertProvider =
-    NotifierProvider<VisionFocusAlertController, SystemAlert?>(
-      VisionFocusAlertController.new,
-    );
-
-final visionSelectedDetectionProvider =
-    NotifierProvider<VisionSelectedDetectionController, Detection?>(
-      VisionSelectedDetectionController.new,
-    );
+final fanStatusProvider = StreamProvider<FanState>((ref) {
+  final repository = ref.watch(nurseryRepositoryProvider);
+  return _poll(repository.getFanStatus, _dashboardRefreshInterval);
+});
 
 final fanControllerProvider = AsyncNotifierProvider<FanController, FanState>(
   FanController.new,
@@ -50,16 +44,10 @@ final fanControlErrorProvider =
       FanControlErrorController.new,
     );
 
-final visionPredictionProvider =
-    AsyncNotifierProvider<VisionPredictionController, PaddyPrediction?>(
-      VisionPredictionController.new,
-    );
-
 class FanController extends AsyncNotifier<FanState> {
   @override
   Future<FanState> build() async {
-    final dashboard = await ref.watch(dashboardProvider.future);
-    return dashboard.fan;
+    return ref.watch(fanStatusProvider.future);
   }
 
   Future<void> setStatus(String status) async {
@@ -80,6 +68,7 @@ class FanController extends AsyncNotifier<FanState> {
     ref.read(fanControlBusyProvider.notifier).setBusy(false);
     if (!result.hasError) {
       ref.invalidate(dashboardProvider);
+      ref.invalidate(fanStatusProvider);
     } else {
       ref.read(fanControlErrorProvider.notifier).setError(result.error);
     }
@@ -100,6 +89,7 @@ class FanController extends AsyncNotifier<FanState> {
     ref.read(fanControlBusyProvider.notifier).setBusy(false);
     if (!result.hasError) {
       ref.invalidate(dashboardProvider);
+      ref.invalidate(fanStatusProvider);
     } else {
       ref.read(fanControlErrorProvider.notifier).setError(result.error);
     }
@@ -121,40 +111,6 @@ class FanControlErrorController extends Notifier<Object?> {
 
   void setError(Object? error) {
     state = error;
-  }
-}
-
-class VisionPredictionController extends AsyncNotifier<PaddyPrediction?> {
-  @override
-  PaddyPrediction? build() => null;
-
-  Future<void> predict(XFile image) async {
-    state = const AsyncLoading();
-    state = await AsyncValue.guard(
-      () => ref.read(nurseryRepositoryProvider).predictPaddyImage(image),
-    );
-  }
-
-  void clear() {
-    state = const AsyncData(null);
-  }
-}
-
-class VisionFocusAlertController extends Notifier<SystemAlert?> {
-  @override
-  SystemAlert? build() => null;
-
-  void setAlert(SystemAlert? alert) {
-    state = alert;
-  }
-}
-
-class VisionSelectedDetectionController extends Notifier<Detection?> {
-  @override
-  Detection? build() => null;
-
-  void select(Detection? detection) {
-    state = detection;
   }
 }
 

@@ -1,6 +1,6 @@
-# API Endpoints untuk Integrasi Flutter
+# API Oryza untuk Integrasi Flutter
 
-Dokumen ini adalah kontrak awal Flutter dengan backend Laravel Smart Rice Nursery. Untuk development tanpa ESP32 dan Vision Python, jalankan simulator backend agar API mengembalikan data seperti sistem real.
+Dokumen ini menjelaskan kontrak API Laravel yang aktif untuk aplikasi Flutter. Backend berfokus pada perangkat ESP32, pembacaan sensor, ketinggian air, dan kontrol kipas. API perangkat kamera dan detection sudah tidak digunakan.
 
 ## Base URL
 
@@ -10,69 +10,33 @@ Development lokal:
 http://127.0.0.1:8000/api
 ```
 
-Android emulator biasanya memakai:
+Android emulator:
 
 ```text
 http://10.0.2.2:8000/api
 ```
 
-## Auth
+## Autentikasi
 
-Semua endpoint selain login dan Vision callback memakai bearer token Sanctum. Endpoint prediksi padi dari Flutter juga wajib memakai bearer token.
-
-Header:
+Hanya `POST /login` yang dapat diakses tanpa token. Endpoint lain menggunakan bearer token Sanctum:
 
 ```text
 Authorization: Bearer {token}
 Accept: application/json
-Content-Type: application/json
 ```
 
-Untuk upload gambar gunakan `multipart/form-data`, bukan JSON.
+Gunakan `Content-Type: application/json` untuk request JSON dan `multipart/form-data` untuk upload gambar.
 
-Login default dari seeder/simulator:
+User development dari seeder:
 
 ```text
 email: operator@padibackend.test
 password: password
 ```
 
-## Simulator Backend
+## Format Response
 
-Gunakan ini sebelum IoT ESP32 dan Python Vision tersedia:
-
-```bash
-php artisan nursery:simulate
-php artisan nursery:simulate --count=10 --scenario=mixed
-php artisan nursery:simulate --sensor --count=5 --scenario=warning
-php artisan nursery:simulate --detection --count=3 --scenario=critical
-```
-
-Untuk simulasi MQTT seperti perangkat ESP32/Wokwi:
-
-```bash
-php artisan mqtt:simulate-device --device=ESP32-01 --scenario=mixed --count=10 --interval=1
-php artisan mqtt:simulate-device --device=ESP32-01 --scenario=critical --count=10 --interval=1 --fan-status=ON
-```
-
-Listener MQTT:
-
-```bash
-php artisan mqtt:listen
-```
-
-Scenario:
-
-```text
-normal   -> sensor normal, detection HEALTHY
-warning  -> sensor melewati threshold, detection PEST confidence sedang
-critical -> sensor abnormal berat, detection DISEASE confidence tinggi
-mixed    -> bergantian normal, warning, critical
-```
-
-## Response Format
-
-Success:
+Format umum sukses:
 
 ```json
 {
@@ -82,7 +46,7 @@ Success:
 }
 ```
 
-Error:
+Format umum gagal:
 
 ```json
 {
@@ -92,11 +56,9 @@ Error:
 }
 ```
 
-## Endpoint Auth
+## Auth
 
 ### POST `/login`
-
-Request:
 
 ```json
 {
@@ -105,99 +67,145 @@ Request:
 }
 ```
 
-Response data penting:
-
-```json
-{
-  "token": "plain-text-token",
-  "user": {
-    "id": 1,
-    "name": "Operator Pembibitan",
-    "email": "operator@padibackend.test",
-    "role": "operator"
-  }
-}
-```
+Data response berisi `token` dan `user`.
 
 ### GET `/user`
 
-Mengambil user aktif berdasarkan bearer token.
+Mengambil user berdasarkan token aktif.
 
 ### POST `/logout`
 
-Menghapus token aktif.
+Menghapus token yang sedang digunakan.
 
-## Endpoint Dashboard
+## Dashboard
 
 ### GET `/dashboard`
 
-Dipakai untuk halaman utama Flutter.
-
-Response data:
+Response `data`:
 
 ```json
 {
   "system_status": "WARNING",
   "device_status": "ONLINE",
+  "device": {
+    "device_code": "ESP32-01",
+    "status": "ONLINE",
+    "is_online": true,
+    "last_seen": "2026-10-28T05:30:00.000000Z"
+  },
   "sensors": {
     "temperature": 32.4,
     "humidity": 88,
     "nitrogen": 26,
     "phosphorus": 25,
     "potassium": 35,
-    "light": 650,
+    "light": 65,
     "light_percent": 65,
-    "uv_index": 2.1,
+    "uv_index": 3.2,
     "ultrasonic": 18,
     "distance_cm": 18,
-    "level_percent": 64,
-    "fan_state": "OFF",
-    "fan_mode": "MANUAL",
-    "recorded_at": "2026-09-24T11:40:21.000000Z"
-  },
-  "latest_detection": {
-    "detection_type": "PEST",
-    "class_name": "wereng",
-    "confidence": 0.78
+    "level_percent": 72,
+    "water_level_percent": 72,
+    "water_level": {
+      "distance_cm": 18,
+      "percent": 72
+    },
+    "fan_state": "ON",
+    "fan_mode": "AUTO",
+    "recorded_at": "2026-10-28T05:30:00.000000Z"
   },
   "fan": {
-    "status": "OFF",
-    "mode": "MANUAL"
+    "status": "ON",
+    "is_on": true,
+    "mode": "AUTO"
   },
   "unread_alerts": 1
 }
 ```
 
-## Endpoint Sensor
+`latest_detection` tidak lagi dikembalikan.
 
-### GET `/sensors/latest`
+## Perangkat ESP32
 
-Mengambil data sensor terakhir.
+### GET `/devices`
 
-Response `data`:
+Mengambil seluruh perangkat bertipe `esp32`, diurutkan berdasarkan heartbeat terakhir.
+
+Contoh item `data[]`:
 
 ```json
 {
-  "temperature": 27.2,
-  "humidity": 76,
-  "nitrogen": 45,
-  "phosphorus": 25,
-  "potassium": 35,
-  "light": 650,
-  "light_percent": 65,
-  "uv_index": 2.1,
-  "ultrasonic": 18,
+  "id": 1,
+  "device_code": "ESP32-01",
+  "name": "ESP32 Utama",
+  "type": "esp32",
+  "location": "Rumah Kaca Pembibitan",
+  "status": "ONLINE",
+  "is_online": true,
+  "last_seen": "2026-10-28T05:30:00.000000Z",
+  "fan": {
+    "status": "ON",
+    "is_on": true,
+    "mode": "AUTO"
+  },
+  "latest_sensor": {
+    "temperature": 28.5,
+    "humidity": 74,
+    "nitrogen": 45,
+    "phosphorus": 25,
+    "potassium": 35,
+    "light_percent": 65,
+    "uv_index": 3.2,
+    "distance_cm": 18,
+    "water_level_percent": 72,
+    "recorded_at": "2026-10-28T05:30:00.000000Z"
+  }
+}
+```
+
+### GET `/devices/{id}`
+
+`id` dapat berupa ID database atau `device_code`, misalnya `/devices/ESP32-01`.
+
+### GET `/devices/{id}/status`
+
+```json
+{
+  "device_code": "ESP32-01",
+  "status": "ONLINE",
+  "is_online": true,
+  "last_seen": "2026-10-28T05:30:00.000000Z",
+  "fan": {
+    "status": "ON",
+    "is_on": true,
+    "mode": "AUTO"
+  }
+}
+```
+
+Status device yang tersedia: `ONLINE`, `OFFLINE`, dan `ERROR`.
+
+## Sensor
+
+### GET `/sensors/latest`
+
+Mengambil pembacaan sensor paling baru. Field ketinggian air tersedia dalam bentuk:
+
+```json
+{
   "distance_cm": 18,
-  "level_percent": 64,
-  "fan_state": "OFF",
-  "fan_mode": "MANUAL",
-  "recorded_at": "2026-09-24T11:40:21.000000Z"
+  "level_percent": 72,
+  "water_level_percent": 72,
+  "water_level": {
+    "distance_cm": 18,
+    "percent": 72
+  }
 }
 ```
 
 ### GET `/sensors/history?range=today`
 
-Range yang tersedia:
+Nilai `range` yang valid:
 
 ```text
 today
@@ -205,42 +213,15 @@ today
 30days
 ```
 
-Response data berisi:
+Response berisi `range`, `summary`, dan `series`.
 
-```text
-range
-summary
-series
-```
-
-`series[]` berisi field sensor yang sama seperti `/sensors/latest`, ditambah `recorded_at`.
-
-## Endpoint Threshold
+## Ambang Sensor
 
 ### GET `/thresholds`
 
-Mengambil batas minimum dan maksimum sensor.
+Mengambil ambang sensor yang aktif.
 
-### PUT `/thresholds/{sensorType}`
-
-Butuh role `operator`.
-
-Contoh:
-
-```http
-PUT /api/thresholds/temperature
-```
-
-Request:
-
-```json
-{
-  "min_value": 20,
-  "max_value": 30
-}
-```
-
-Sensor type:
+Sensor type yang didukung:
 
 ```text
 temperature
@@ -248,273 +229,56 @@ humidity
 nitrogen
 phosphorus
 potassium
-light
-ultrasonic
+light_percent
+uv_index
+water_level
 ```
 
-## Endpoint Device
+`water_level` menggunakan satuan persen ketinggian air, bukan jarak ultrasonik dalam sentimeter.
 
-### GET `/devices`
+### PUT `/thresholds/{sensorType}`
 
-List perangkat IoT.
+Memerlukan user dengan role `operator`.
 
-### GET `/devices/{id}`
+Contoh:
 
-Detail perangkat.
-
-### GET `/devices/{id}/status`
-
-Status perangkat.
-
-## Endpoint Camera
-
-### GET `/cameras`
-
-List kamera.
-
-### GET `/cameras/{id}`
-
-Detail kamera.
-
-### GET `/cameras/{id}/status`
-
-Status kamera.
-
-## Endpoint Detection
-
-### GET `/detections`
-
-List hasil vision.
-
-Filter:
-
-```text
-/detections?type=pest
-/detections?type=disease
-/detections?camera=CAM-01
+```http
+PUT /api/thresholds/water_level
 ```
-
-### GET `/detections/latest`
-
-Hasil vision terbaru.
-
-### GET `/detections/{id}`
-
-Detail detection.
-
-## Endpoint Prediksi Padi
-
-Endpoint ini dipakai Flutter untuk upload gambar ke Laravel. Laravel akan meneruskan gambar ke Oryza Vision API sebagai multipart field `file` dengan header internal `X-API-Key`.
-
-### POST `/paddy/predict`
-
-Header:
-
-```text
-Authorization: Bearer {token}
-Accept: application/json
-Content-Type: multipart/form-data
-```
-
-Body multipart:
-
-```text
-image: file JPG/JPEG/PNG, max 10 MB
-```
-
-Response sukses:
 
 ```json
 {
-  "success": true,
-  "prediction": {
-    "class_id": 3,
-    "class": "blast",
-    "display_name": "Blast",
-    "confidence": 92.74,
-    "status": "high_confidence"
-  }
+  "min_value": 20,
+  "max_value": 90
 }
 ```
 
-Jika Oryza Vision API gagal, Laravel mengembalikan status code dari service tersebut:
+`max_value` harus lebih besar atau sama dengan `min_value`. Sensor type yang tidak didukung menghasilkan `422 Unprocessable Entity`.
 
-```json
-{
-  "success": false,
-  "message": "Vision prediction failed",
-  "error": {
-    "success": false,
-    "message": "Invalid image"
-  }
-}
-```
-
-### POST `/paddy/predict/realtime`
-
-Dipakai untuk snapshot kamera berkala. Jangan kirim 30 FPS; gunakan interval sekitar 2 detik.
-
-Header:
-
-```text
-Authorization: Bearer {token}
-Accept: application/json
-Content-Type: multipart/form-data
-```
-
-Body multipart:
-
-```text
-image: snapshot kamera JPG/JPEG/PNG, max 10 MB
-stream_id: string optional, gunakan ID tetap selama halaman kamera aktif
-```
-
-Response mengikuti response dari Oryza Vision API. Contoh:
-
-```json
-{
-  "success": true,
-  "prediction": {
-    "class": "blast",
-    "confidence": 88.5,
-    "status": "medium_confidence"
-  },
-  "stable_prediction": null
-}
-```
-
-Jika `stable_prediction` masih `null`, Flutter boleh menampilkan `prediction` sebagai indikasi sementara dan memberi status menunggu stabil.
-
-## Endpoint Vision Service
-
-Endpoint ini untuk Python Vision Service, bukan Flutter. Jangan panggil endpoint ini dari aplikasi mobile.
-
-### POST `/vision/detections`
-
-Header:
-
-```text
-X-Vision-Key: {VISION_API_KEY}
-```
-
-Request:
-
-```json
-{
-  "camera_id": "CAM-01",
-  "detection_type": "DISEASE",
-  "class_name": "rice_blast",
-  "confidence": 0.92,
-  "image_path": "detections/cam01-001.jpg",
-  "detected_at": "2026-09-24 11:40:21"
-}
-```
-
-Allowed `detection_type`:
-
-```text
-PEST
-DISEASE
-HEALTHY
-UNKNOWN
-```
-
-## Endpoint Riwayat Scan Manual Oryza Vision
-
-Endpoint ini dipakai Flutter untuk menyinkronkan dan membaca riwayat hasil scan manual. Data disimpan pada `vision_scans` dan terpisah dari `detections` milik kamera/Python Vision Service. Semua endpoint memerlukan bearer token Sanctum.
-
-### GET `/vision/scans`
-
-Mengambil scan milik user aktif, diurutkan dari `scanned_at` terbaru dan dipaginasi.
-
-Query opsional:
-
-```text
-scan_type: disease atau pest
-page: integer mulai dari 1
-per_page: integer 1 sampai 100 (default 15)
-```
-
-Contoh: `/vision/scans?scan_type=disease&page=1&per_page=20`.
-
-### POST `/vision/scans`
-
-Gunakan `multipart/form-data`:
-
-```text
-client_id: required string max 100
-scan_type: required disease|pest
-class_name: required string max 100
-display_name: required string max 150
-confidence: required numeric 0..1
-scanned_at: required ISO-8601, contoh 2026-10-24T08:30:00+07:00
-image: required JPG/JPEG/PNG/WEBP max 10 MB
-```
-
-`client_id` adalah ID lokal dari Flutter. Kombinasi user dan `client_id` bersifat unik: kiriman pertama mengembalikan `201 Created`, sedangkan retry mengembalikan record lama dengan `200 OK` tanpa menyimpan gambar atau row baru.
-
-### GET `/vision/scans/{visionScan}`
-
-Mengambil satu scan milik user aktif. Scan milik user lain tidak dapat diakses.
-
-Format setiap item:
-
-```json
-{
-  "id": 12,
-  "local_id": "scan-mobile-001",
-  "client_id": "scan-mobile-001",
-  "scan_type": "disease",
-  "class_name": "rice_blast",
-  "display_name": "Rice Blast",
-  "confidence": 0.9274,
-  "scanned_at": "2026-10-24T01:30:00.000000Z",
-  "image_url": "http://127.0.0.1:8000/storage/vision-scans/1/example.jpg",
-  "created_at": "2026-10-24T01:31:00.000000Z"
-}
-```
-
-Jalankan `php artisan storage:link` agar `image_url` pada public disk dapat diakses.
-
-## Endpoint Alert
-
-### GET `/alerts`
-
-List alert terbaru.
-
-### GET `/alerts/{id}`
-
-Detail alert.
-
-### POST `/alerts/{id}/read`
-
-Menandai alert sebagai terbaca.
-
-## Endpoint Recommendation
-
-### GET `/recommendations`
-
-List rekomendasi.
-
-### GET `/recommendations/latest`
-
-Rekomendasi terbaru.
-
-### GET `/recommendations/{id}`
-
-Detail rekomendasi.
-
-## Endpoint Actuator Kipas
+## Kipas
 
 ### GET `/actuators/fan/status`
 
-Mengambil status kipas.
+Gunakan query `device_id` jika terdapat lebih dari satu ESP32:
+
+```http
+GET /api/actuators/fan/status?device_id=ESP32-01
+```
+
+```json
+{
+  "device_id": "ESP32-01",
+  "device_online": true,
+  "status": "ON",
+  "is_on": true,
+  "mode": "AUTO",
+  "updated_at": "2026-10-28T05:30:00.000000Z"
+}
+```
 
 ### POST `/actuators/fan/control`
 
-Butuh role `operator`.
-
-Request:
+Memerlukan role `operator` dan device harus berstatus `ONLINE`.
 
 ```json
 {
@@ -524,18 +288,158 @@ Request:
 }
 ```
 
-Allowed value:
+Nilai yang diperbolehkan:
 
 ```text
 command: ON, OFF, AUTO
 mode: AUTO, MANUAL
 ```
 
+Device yang tidak ditemukan menghasilkan `404`. Device offline menghasilkan `409 Conflict`. Status aktual kipas diperbarui ketika feedback MQTT diterima dari ESP32.
+
 ### GET `/actuators/logs`
 
-Mengambil histori kontrol kipas.
+Mengambil histori command kipas.
 
-## Status Code Penting
+## Alert dan Rekomendasi
+
+```text
+GET  /alerts
+GET  /alerts/{id}
+POST /alerts/{id}/read
+GET  /recommendations
+GET  /recommendations/latest
+GET  /recommendations/{id}
+```
+
+Alert otomatis dapat dibuat ketika sensor melewati ambang atau perangkat tidak mengirim heartbeat dalam batas waktu.
+
+## Prediksi Gambar Oryza Vision
+
+Fitur ini menerima gambar yang dipilih atau diambil dari aplikasi. Fitur ini tidak menggunakan API perangkat kamera backend.
+
+### POST `/paddy/predict`
+
+Gunakan `multipart/form-data`:
+
+```text
+image: JPG/JPEG/PNG, maksimal 10 MB
+```
+
+Laravel meneruskan file ke Oryza Vision API sebagai field multipart `file`.
+
+### POST `/paddy/predict/realtime`
+
+Gunakan `multipart/form-data`:
+
+```text
+image: JPG/JPEG/PNG, maksimal 10 MB
+stream_id: string opsional
+```
+
+Endpoint ini dapat menerima frame berkala dari aplikasi, tetapi tidak mendaftarkan perangkat kamera di backend.
+
+## Riwayat Scan Manual
+
+### GET `/vision/scans`
+
+Query opsional:
+
+```text
+scan_type: disease atau pest
+page: integer mulai dari 1
+per_page: integer 1 sampai 100
+```
+
+### POST `/vision/scans`
+
+Gunakan `multipart/form-data`:
+
+```text
+client_id: required, string, max 100
+scan_type: required, disease|pest
+class_name: required, string, max 100
+display_name: required, string, max 150
+confidence: required, numeric 0..1
+scanned_at: required, ISO-8601
+image: required, JPG/JPEG/PNG/WEBP, max 10 MB
+```
+
+Kombinasi user dan `client_id` bersifat unik. Retry mengembalikan record lama tanpa membuat row atau file baru.
+
+### GET `/vision/scans/{visionScan}`
+
+Mengambil scan milik user aktif. Scan milik user lain tidak dapat diakses.
+
+## Route yang Sudah Dihapus
+
+Route berikut tidak tersedia dan akan mengembalikan `404`:
+
+```text
+/cameras
+/cameras/{id}
+/cameras/{id}/status
+/detections
+/detections/latest
+/detections/{id}
+/vision/detections
+```
+
+## Integrasi MQTT ESP32
+
+Jalankan listener:
+
+```bash
+php artisan mqtt:subscribe
+```
+
+Topic default:
+
+```text
+oryza-smart/ESP32-01/status
+oryza-smart/ESP32-01/sensors
+oryza-smart/ESP32-01/actuator/fan/status
+oryza-smart/ESP32-01/actuator/fan/command
+```
+
+Payload heartbeat:
+
+```json
+{"status":"ON"}
+```
+
+Payload sensor:
+
+```json
+{
+  "device_id": "ESP32-01",
+  "uptime_s": 120,
+  "temperature": 28.5,
+  "humidity": 74,
+  "npk": {"n": 45, "p": 25, "k": 35},
+  "light": {"percent": 65, "uv_index": 3.2},
+  "ultrasonic": {"distance_cm": 18, "level_percent": 72},
+  "fan": {"state": "OFF", "mode": "AUTO"}
+}
+```
+
+## Simulator
+
+Simulator sensor langsung:
+
+```bash
+php artisan nursery:simulate --count=10 --scenario=mixed
+```
+
+Simulator melalui MQTT:
+
+```bash
+php artisan mqtt:simulate-device --device=ESP32-01 --scenario=mixed --count=10 --interval=1
+```
+
+Scenario: `normal`, `warning`, `critical`, atau `mixed`.
+
+## Status Code
 
 ```text
 200 OK
@@ -543,49 +447,19 @@ Mengambil histori kontrol kipas.
 401 Unauthorized
 403 Forbidden
 404 Not Found
-422 Validation Error
+409 Conflict
+422 Unprocessable Entity
 429 Too Many Requests
-500 Server Error
+500 Internal Server Error
 ```
 
-## Flow Integrasi Flutter
+## Flow Flutter
 
-1. Jalankan migration dan seeder:
-
-```bash
-php artisan migrate --seed
-```
-
-2. Buat data simulasi:
-
-```bash
-php artisan nursery:simulate --count=10 --scenario=mixed
-```
-
-3. Jalankan backend:
-
-```bash
-php artisan serve
-```
-
-4. Flutter login ke `/api/login`.
-5. Simpan token dari `data.token`.
-6. Kirim token di header `Authorization` untuk semua request berikutnya.
-7. Halaman dashboard cukup memanggil `/api/dashboard`.
-8. Halaman prediksi penyakit/hama mengirim gambar ke `/api/paddy/predict`.
-9. Halaman kamera realtime mengirim snapshot berkala ke `/api/paddy/predict/realtime`.
-
-## Catatan Saat IoT dan Vision Real Sudah Ada
-
-Flutter tidak perlu mengganti endpoint untuk dashboard, sensor, detection, alert, dan rekomendasi. ESP32 dan Vision Python hanya mengganti sumber data yang masuk ke Laravel:
-
-```text
-ESP32 -> MQTT -> Laravel -> Database -> Flutter API
-Python Vision -> REST API -> Laravel -> Database -> Flutter API
-```
-
-Untuk prediksi gambar langsung dari aplikasi:
-
-```text
-Flutter -> Laravel API -> Oryza Vision API
-```
+1. Login melalui `/login`.
+2. Simpan bearer token.
+3. Ambil ringkasan melalui `/dashboard`.
+4. Ambil perangkat dan statusnya melalui `/devices`.
+5. Ambil detail sensor melalui `/sensors/latest` atau `/sensors/history`.
+6. Kontrol kipas melalui `/actuators/fan/control`.
+7. Tampilkan status aktual dari `/actuators/fan/status`.
+8. Gunakan `/paddy/predict` untuk prediksi gambar dan `/vision/scans` untuk riwayat scan.

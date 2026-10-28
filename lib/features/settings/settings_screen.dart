@@ -1,28 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/config/app_config.dart';
 import '../../core/theme/app_theme.dart';
 import '../../shared/repositories/nursery_repository.dart';
+import '../../shared/models/nursery_models.dart';
 import '../../shared/widgets/section_card.dart';
+import 'settings_controller.dart';
 
-class SettingsScreen extends StatefulWidget {
+class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key, required this.user, required this.onLogout});
 
   final AuthUser user;
   final Future<void> Function() onLogout;
 
   @override
-  State<SettingsScreen> createState() => _SettingsScreenState();
+  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen> {
+class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _criticalNotif = true;
   bool _dailySummary = true;
-  double _temperatureLimit = 32;
-  double _humidityLimit = 80;
 
   @override
   Widget build(BuildContext context) {
+    final thresholds = ref.watch(sensorThresholdsProvider);
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       children: [
@@ -66,25 +68,70 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 icon: Icons.tune_rounded,
                 title: 'Ambang Sensor',
               ),
-              const SizedBox(height: 12),
-              _ThresholdSlider(
-                label: 'Suhu maksimum',
-                value: _temperatureLimit,
-                min: 25,
-                max: 40,
-                unit: 'C',
-                color: AppTheme.warning,
-                onChanged: (value) => setState(() => _temperatureLimit = value),
+              const SizedBox(height: 4),
+              const Text(
+                'Nilai minimum dan maksimum berikut dibaca langsung dari API.',
+                style: TextStyle(fontSize: 12, color: AppTheme.textMuted),
               ),
-              const SizedBox(height: 10),
-              _ThresholdSlider(
-                label: 'Kelembapan maksimum',
-                value: _humidityLimit,
-                min: 60,
-                max: 95,
-                unit: '%',
-                color: AppTheme.infoBlue,
-                onChanged: (value) => setState(() => _humidityLimit = value),
+              const SizedBox(height: 12),
+              thresholds.when(
+                data: (items) => items.isEmpty
+                    ? const Text('Ambang sensor belum tersedia dari API.')
+                    : Column(
+                        children: [
+                          for (
+                            var index = 0;
+                            index < items.length;
+                            index++
+                          ) ...[
+                            _ThresholdEditor(
+                              key: ValueKey(
+                                '${items[index].sensorType}-${items[index].minValue}-${items[index].maxValue}',
+                              ),
+                              threshold: items[index],
+                              onSave: (threshold) async {
+                                final success = await ref
+                                    .read(sensorThresholdsProvider.notifier)
+                                    .saveThreshold(threshold);
+                                if (!context.mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      success
+                                          ? 'Ambang ${_thresholdLabel(threshold.sensorType)} tersimpan.'
+                                          : 'Ambang gagal disimpan. Periksa koneksi dan hak akses.',
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                            if (index < items.length - 1)
+                              const Divider(height: 24),
+                          ],
+                        ],
+                      ),
+                loading: () => const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(16),
+                    child: CircularProgressIndicator(
+                      color: AppTheme.primaryGreen,
+                    ),
+                  ),
+                ),
+                error: (error, _) => Column(
+                  children: [
+                    const Text(
+                      'Ambang sensor belum dapat dimuat dari API.',
+                      style: TextStyle(color: AppTheme.textMuted),
+                    ),
+                    TextButton.icon(
+                      onPressed: () =>
+                          ref.read(sensorThresholdsProvider.notifier).reload(),
+                      icon: const Icon(Icons.refresh_rounded),
+                      label: const Text('Coba lagi'),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -109,7 +156,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             children: [
               _ConfigField(title: 'Backend API', value: AppConfig.apiBaseUrl),
               const SizedBox(height: 10),
-              const _ConfigField(title: 'Device ID', value: AppConfig.deviceId),
+              _ConfigField(title: 'Device ID', value: AppConfig.deviceId),
               const SizedBox(height: 10),
               const _ConfigField(title: 'Alur Data', value: AppConfig.dataFlow),
             ],
@@ -229,27 +276,43 @@ class _SettingSwitch extends StatelessWidget {
   }
 }
 
-class _ThresholdSlider extends StatelessWidget {
-  const _ThresholdSlider({
-    required this.label,
-    required this.value,
-    required this.min,
-    required this.max,
-    required this.unit,
-    required this.color,
-    required this.onChanged,
+class _ThresholdEditor extends StatefulWidget {
+  const _ThresholdEditor({
+    super.key,
+    required this.threshold,
+    required this.onSave,
   });
 
-  final String label;
-  final double value;
-  final double min;
-  final double max;
-  final String unit;
-  final Color color;
-  final ValueChanged<double> onChanged;
+  final SensorThreshold threshold;
+  final Future<void> Function(SensorThreshold threshold) onSave;
+
+  @override
+  State<_ThresholdEditor> createState() => _ThresholdEditorState();
+}
+
+class _ThresholdEditorState extends State<_ThresholdEditor> {
+  late RangeValues _values;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final bounds = _thresholdBounds(widget.threshold.sensorType);
+    _values = RangeValues(
+      widget.threshold.minValue.clamp(bounds.start, bounds.end),
+      widget.threshold.maxValue.clamp(bounds.start, bounds.end),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final type = widget.threshold.sensorType;
+    final bounds = _thresholdBounds(type);
+    final unit = _thresholdUnit(type);
+    final changed =
+        _values.start != widget.threshold.minValue ||
+        _values.end != widget.threshold.maxValue;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -257,7 +320,7 @@ class _ThresholdSlider extends StatelessWidget {
           children: [
             Expanded(
               child: Text(
-                label,
+                _thresholdLabel(type),
                 style: const TextStyle(
                   fontWeight: FontWeight.w900,
                   color: AppTheme.textStrong,
@@ -265,27 +328,91 @@ class _ThresholdSlider extends StatelessWidget {
               ),
             ),
             Text(
-              '${value.round()} $unit',
-              style: TextStyle(
-                color: color,
+              '${_formatThreshold(_values.start)}–${_formatThreshold(_values.end)} $unit',
+              style: const TextStyle(
+                color: AppTheme.primaryGreen,
                 fontWeight: FontWeight.w900,
                 fontSize: 13,
               ),
             ),
           ],
         ),
-        Slider(
-          value: value,
-          min: min,
-          max: max,
-          divisions: (max - min).round(),
-          activeColor: color,
-          onChanged: onChanged,
+        RangeSlider(
+          values: _values,
+          min: bounds.start,
+          max: bounds.end,
+          divisions: (bounds.end - bounds.start).round(),
+          activeColor: AppTheme.primaryGreen,
+          labels: RangeLabels(
+            _formatThreshold(_values.start),
+            _formatThreshold(_values.end),
+          ),
+          onChanged: _saving
+              ? null
+              : (values) => setState(() => _values = values),
+        ),
+        Align(
+          alignment: Alignment.centerRight,
+          child: FilledButton.tonalIcon(
+            onPressed: !changed || _saving
+                ? null
+                : () async {
+                    setState(() => _saving = true);
+                    await widget.onSave(
+                      SensorThreshold(
+                        sensorType: type,
+                        minValue: _values.start,
+                        maxValue: _values.end,
+                      ),
+                    );
+                    if (mounted) setState(() => _saving = false);
+                  },
+            icon: _saving
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.save_rounded, size: 18),
+            label: const Text('Simpan'),
+          ),
         ),
       ],
     );
   }
 }
+
+RangeValues _thresholdBounds(String type) => switch (type) {
+  'temperature' => const RangeValues(0, 50),
+  'humidity' || 'light_percent' || 'water_level' => const RangeValues(0, 100),
+  'uv_index' => const RangeValues(0, 15),
+  'nitrogen' || 'phosphorus' || 'potassium' => const RangeValues(0, 200),
+  _ => const RangeValues(0, 100),
+};
+
+String _thresholdLabel(String type) => switch (type) {
+  'temperature' => 'Suhu',
+  'humidity' => 'Kelembapan',
+  'nitrogen' => 'Nitrogen',
+  'phosphorus' => 'Fosfor',
+  'potassium' => 'Kalium',
+  'light_percent' => 'Intensitas cahaya',
+  'uv_index' => 'Indeks UV',
+  'water_level' => 'Ketinggian air',
+  _ => type,
+};
+
+String _thresholdUnit(String type) => switch (type) {
+  'temperature' => '°C',
+  'humidity' || 'light_percent' || 'water_level' => '%',
+  'uv_index' => 'indeks',
+  'nitrogen' || 'phosphorus' || 'potassium' => 'mg/kg',
+  _ => '',
+};
+
+String _formatThreshold(double value) => value == value.roundToDouble()
+    ? value.round().toString()
+    : value.toStringAsFixed(1);
 
 class _SectionTitle extends StatelessWidget {
   const _SectionTitle({required this.icon, required this.title});

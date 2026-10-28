@@ -17,6 +17,56 @@ void main() {
     expect(restored.device.code, snapshot.device.code);
     expect(restored.recommendation.status, snapshot.recommendation.status);
     expect(restored.alerts, hasLength(snapshot.alerts.length));
+    expect(restored.sensor.waterLevel, 64);
+  });
+
+  test('status kipas membaca bentuk respons actuator dari API', () {
+    final fan = FanState.fromJson({
+      'actuator': {'status': 'ON', 'mode': 'AUTO'},
+    });
+
+    expect(fan.status, 'ON');
+    expect(fan.mode, 'AUTO');
+  });
+
+  test('model membaca kontrak device dan sensor API terbaru', () {
+    final device = DeviceStatus.fromJson(
+      {
+        'device_code': 'ESP32-01',
+        'name': 'ESP32 Utama',
+        'location': 'Rumah Kaca',
+        'status': 'ONLINE',
+        'is_online': true,
+        'last_seen': '2026-10-28T05:30:00.000Z',
+        'fan': {'status': 'ON', 'is_on': true, 'mode': 'AUTO'},
+        'latest_sensor': {
+          'temperature': 28.5,
+          'light_percent': 65,
+          'uv_index': 3.2,
+          'water_level_percent': 72,
+          'distance_cm': 18,
+          'recorded_at': '2026-10-28T05:30:00.000Z',
+        },
+      },
+      fallbackCode: 'ESP32',
+      fallbackName: 'ESP32',
+    );
+
+    expect(device.isOnline, isTrue);
+    expect(device.location, 'Rumah Kaca');
+    expect(device.fan?.status, 'ON');
+    expect(device.latestSensor?.lightPercent, 65);
+    expect(device.latestSensor?.uvIndex, 3.2);
+    expect(device.latestSensor?.waterLevel, 72);
+  });
+
+  test('sensor membaca objek water_level alternatif', () {
+    final sensor = SensorReading.fromJson({
+      'water_level': {'distance_cm': 21, 'percent': 68},
+    });
+
+    expect(sensor.ultrasonic, 21);
+    expect(sensor.waterLevel, 68);
   });
 
   testWidgets('shows login then opens dashboard', (WidgetTester tester) async {
@@ -90,6 +140,11 @@ class _FakeRepository extends NurseryRepository {
   }
 
   @override
+  Future<FanState> getFanStatus() async {
+    return const FanState(status: 'ON', mode: 'AUTO');
+  }
+
+  @override
   Future<DashboardSnapshot> getDashboard() async {
     return dashboardSnapshot();
   }
@@ -103,12 +158,6 @@ class _FakeRepository extends NurseryRepository {
         status: 'ONLINE',
         lastSeen: now,
       ),
-      camera: DeviceStatus(
-        code: 'CAM-01',
-        name: 'Camera 01',
-        status: 'ONLINE',
-        lastSeen: now,
-      ),
       sensor: SensorReading(
         deviceId: 'ESP32-01',
         temperature: 29,
@@ -116,17 +165,12 @@ class _FakeRepository extends NurseryRepository {
         nitrogen: 40,
         phosphorus: 20,
         potassium: 30,
-        light: 700,
+        light: 65,
+        lightPercent: 65,
+        uvIndex: 3.2,
         ultrasonic: 14,
+        waterLevel: 64,
         createdAt: now,
-      ),
-      detection: Detection(
-        cameraId: 'CAM-01',
-        type: 'healthy',
-        className: 'Healthy',
-        confidence: 0.95,
-        image: '',
-        detectedAt: now,
       ),
       fan: const FanState(status: 'ON', mode: 'AUTO'),
       alerts: const [],
