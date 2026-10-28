@@ -20,6 +20,46 @@ class DashboardSnapshot {
   final Recommendation recommendation;
   final String systemStatus;
   final int unreadAlerts;
+
+  Map<String, dynamic> toJson() => {
+    'device': device.toJson(),
+    'camera': camera.toJson(),
+    'sensor': sensor.toJson(),
+    'detection': detection.toJson(),
+    'fan': fan.toJson(),
+    'alerts': alerts.map((alert) => alert.toJson()).toList(),
+    'recommendation': recommendation.toJson(),
+    'system_status': systemStatus,
+    'unread_alerts': unreadAlerts,
+  };
+
+  factory DashboardSnapshot.fromJson(Map<String, dynamic> json) {
+    final alerts = (json['alerts'] as List? ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .map(SystemAlert.fromJson)
+        .toList();
+    return DashboardSnapshot(
+      device: DeviceStatus.fromJson(
+        _map(json['device']),
+        fallbackCode: 'ESP32-01',
+        fallbackName: 'Nursery Controller',
+      ),
+      camera: DeviceStatus.fromJson(
+        _map(json['camera']),
+        fallbackCode: 'CAM-01',
+        fallbackName: 'Camera 01',
+      ),
+      sensor: SensorReading.fromJson(_map(json['sensor'])),
+      detection: Detection.fromJson(_map(json['detection'])),
+      fan: FanState.fromJson(_map(json['fan'])),
+      alerts: alerts,
+      recommendation: Recommendation.fromJson(_map(json['recommendation'])),
+      systemStatus: '${json['system_status'] ?? 'UNKNOWN'}',
+      unreadAlerts:
+          _toNullableInt(json['unread_alerts']) ??
+          alerts.where((alert) => !alert.isRead).length,
+    );
+  }
 }
 
 class SensorReading {
@@ -60,6 +100,18 @@ class SensorReading {
           DateTime.now(),
     );
   }
+
+  Map<String, dynamic> toJson() => {
+    'device_id': deviceId,
+    'temperature': temperature,
+    'humidity': humidity,
+    'nitrogen': nitrogen,
+    'phosphorus': phosphorus,
+    'potassium': potassium,
+    'light': light,
+    'ultrasonic': ultrasonic,
+    'created_at': createdAt.toIso8601String(),
+  };
 }
 
 class Detection {
@@ -94,6 +146,15 @@ class Detection {
           DateTime.now(),
     );
   }
+
+  Map<String, dynamic> toJson() => {
+    'camera_id': cameraId,
+    'type': type,
+    'class_name': className,
+    'confidence': confidence,
+    'image': image,
+    'detected_at': detectedAt.toIso8601String(),
+  };
 }
 
 class PaddyPrediction {
@@ -111,7 +172,8 @@ class PaddyPrediction {
   final double confidence;
   final String status;
 
-  double get confidencePercent => confidence <= 1 ? confidence * 100 : confidence;
+  double get confidencePercent =>
+      confidence <= 1 ? confidence * 100 : confidence;
 
   factory PaddyPrediction.fromJson(Map<String, dynamic> json) {
     return PaddyPrediction(
@@ -154,6 +216,13 @@ class DeviceStatus {
           DateTime.now(),
     );
   }
+
+  Map<String, dynamic> toJson() => {
+    'code': code,
+    'name': name,
+    'status': status,
+    'last_seen': lastSeen.toIso8601String(),
+  };
 }
 
 class FanState {
@@ -176,6 +245,8 @@ class FanState {
       mode: _normalizeStatus(json['mode'] ?? 'MANUAL'),
     );
   }
+
+  Map<String, dynamic> toJson() => {'status': status, 'mode': mode};
 }
 
 class SystemAlert {
@@ -218,6 +289,15 @@ class SystemAlert {
       isRead: json['is_read'] == true || json['read_at'] != null,
     );
   }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'level': level,
+    'title': title,
+    'message': message,
+    'created_at': createdAt.toIso8601String(),
+    'is_read': isRead,
+  };
 }
 
 class Recommendation {
@@ -239,7 +319,16 @@ class Recommendation {
           '${json['message'] ?? json['recommendation'] ?? 'Lanjutkan pemantauan berkala.'}',
     );
   }
+
+  Map<String, dynamic> toJson() => {
+    'status': status,
+    'cause': cause,
+    'message': message,
+  };
 }
+
+Map<String, dynamic> _map(Object? value) =>
+    value is Map<String, dynamic> ? value : <String, dynamic>{};
 
 double _toDouble(Object? value) {
   if (value is num) return value.toDouble();

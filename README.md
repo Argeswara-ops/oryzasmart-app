@@ -1,83 +1,100 @@
 # ORYZA SMART
 
-ORYZA SMART is a Flutter mobile application for Smart Rice Nursery monitoring. The app connects to a Laravel API to display real-time nursery conditions, sensor history, alerts, recommendations, device status, fan control, and AI-assisted paddy image prediction.
+ORYZA SMART adalah aplikasi Flutter untuk pemantauan pembibitan padi berbasis IoT dan analisis penyakit/hama melalui Oryza Vision. Aplikasi tetap berguna saat koneksi terputus: pengguna yang sudah masuk dapat melihat antarmuka dan data terakhir yang berhasil disinkronkan, sedangkan penyegaran dilanjutkan otomatis saat layanan kembali dapat dijangkau.
 
-## Overview
+## Fitur Utama
 
-The system is designed around a centralized backend architecture. Flutter communicates only with the Laravel REST API, while Laravel integrates data from IoT devices, MQTT, database records, and the Oryza Vision service.
+- Autentikasi pengguna melalui Laravel Sanctum.
+- Mode tamu tanpa login dengan akses terbatas hanya ke Oryza Vision.
+- Inferensi penyakit dan hama secara lokal menggunakan model TensorFlow Lite.
+- Dasbor kondisi pembibitan, sensor, perangkat, kamera, deteksi, rekomendasi, dan notifikasi.
+- Riwayat sensor untuk periode hari ini, 7 hari, dan 30 hari.
+- Kontrol kipas dalam mode manual atau otomatis.
+- Penyimpanan lokal data hasil sinkronisasi terakhir untuk penggunaan offline.
+- Banner status `Anda online` dan `Anda offline` tanpa menampilkan kode error jaringan.
+- Sinkronisasi otomatis data dasbor dan riwayat Vision saat koneksi kembali tersedia.
+
+## Mode Akses
+
+### Pengguna terautentikasi
+
+Pengguna yang berhasil login memperoleh akses ke seluruh menu: Dasbor, Device, Vision, Riwayat, dan Settings. Token dan identitas sesi disimpan secara lokal sehingga sesi dapat dipulihkan ketika aplikasi dibuka tanpa koneksi internet.
+
+Saat offline, aplikasi mempertahankan UI dan menampilkan cache data terakhir yang berhasil diterima dari backend. Permintaan berikutnya dijalankan kembali melalui mekanisme polling ketika koneksi pulih.
+
+### Tamu
+
+Pengguna dapat memilih **Lanjut sebagai Tamu** tanpa memasukkan akun. Mode ini hanya membuka menu Vision. Hasil pemindaian disimpan di perangkat dan tidak dikirim ke backend sebelum pengguna masuk.
+
+## Arsitektur
 
 ```text
-Flutter App -> Laravel API -> MySQL / MQTT / Oryza Vision
-ESP32       -> MQTT        -> Laravel API
-Camera AI   -> Vision API  -> Laravel API
+Flutter App ── REST API ── Laravel ── MySQL / MQTT
+     │                           └── ESP32 dan layanan IoT
+     ├── SharedPreferences (cache data dan riwayat)
+     ├── Secure Storage (token autentikasi)
+     └── TensorFlow Lite (inferensi Vision di perangkat)
 ```
 
-## Key Features
+Komponen utama:
 
-- Secure login with Laravel Sanctum bearer token.
-- Dashboard for system status, device status, latest sensor values, latest detection, alerts, and recommendations.
-- Sensor monitoring and history for temperature, humidity, NPK, light, UV, ultrasonic distance, and water level.
-- Vision menu with camera/gallery image upload for paddy disease prediction.
-- Multipart upload to `POST /api/paddy/predict` using field `image`.
-- Vision detection history with disease, pest, healthy, and unknown categories.
-- Fan actuator control with manual and automatic modes.
-- Device and camera status views.
-- Alert and recommendation pages for nursery operation support.
+- Flutter dan Dart
+- Riverpod untuk pengelolaan state
+- Dio untuk komunikasi REST API dan deteksi status koneksi
+- Shared Preferences untuk cache data terakhir
+- Flutter Secure Storage untuk token autentikasi
+- TensorFlow Lite untuk inferensi lokal
+- FL Chart untuk visualisasi riwayat sensor
+- Image Picker untuk kamera dan galeri
 
-## Tech Stack
-
-- Flutter and Dart
-- Riverpod for state management
-- Dio for REST API communication
-- FL Chart for sensor visualization
-- Image Picker for camera/gallery upload
-- Laravel REST API with Sanctum authentication
-
-## Project Structure
+## Struktur Proyek
 
 ```text
 lib/
   core/
-    api/
-    config/
-    constants/
-    theme/
+    api/                    # klien API, provider, dan status koneksi
+    config/                 # konfigurasi aplikasi
+    theme/                  # tema visual
   features/
-    auth/
-    dashboard/
-    devices/
-    history/
-    sensors/
-    settings/
-    vision/
+    auth/                   # halaman login dan mode tamu
+    dashboard/              # dasbor dan polling data
+    devices/                # status perangkat dan kontrol kipas
+    history/                # riwayat sensor dan Vision
+    oryza_vision/           # model lokal, scan, hasil, dan sinkronisasi
+    settings/               # pengaturan akun
+    shell/                  # navigasi utama dan banner koneksi
   shared/
-    models/
-    repositories/
-    widgets/
+    models/                 # model domain dan serialisasi cache
+    repositories/           # akses API, sesi, dan cache offline
+    widgets/                # komponen UI bersama
+assets/models/oryza-vision/ # model dan metadata TensorFlow Lite
+docs/                       # kontrak API dan dokumentasi teknis
 ```
 
-## Requirements
+## Persyaratan
 
-- Flutter SDK compatible with Dart `^3.11.0`
-- Android Studio or Xcode for mobile builds
-- Running Laravel backend that follows `docs/API.MD`
-- Valid API base URL in `.env`
+- Flutter SDK yang mendukung Dart `^3.11.0`
+- Android Studio atau Xcode untuk build perangkat bergerak
+- Backend Laravel yang mengikuti kontrak pada `docs/API.MD`
+- Model TensorFlow Lite pada `assets/models/oryza-vision/`
 
-## Environment Setup
+## Konfigurasi Lingkungan
 
-Create a `.env` file in the project root:
+Buat berkas `.env` pada root proyek:
 
 ```env
 API_BASE_URL=http://10.0.2.2:8000/api
 ```
 
-Common values:
+Gunakan alamat yang sesuai dengan target:
 
-- Android emulator: `http://10.0.2.2:8000/api`
-- Local desktop/web testing: `http://127.0.0.1:8000/api`
-- Physical device: use the local network IP of the backend machine, for example `http://192.168.1.10:8000/api`
+- Emulator Android: `http://10.0.2.2:8000/api`
+- Desktop atau web lokal: `http://127.0.0.1:8000/api`
+- Perangkat fisik: alamat IP LAN komputer backend, misalnya `http://192.168.1.10:8000/api`
 
-## Installation
+Pastikan perangkat dan komputer backend berada pada jaringan yang sama serta port backend diizinkan oleh firewall.
+
+## Menjalankan Aplikasi
 
 ```bash
 flutter pub get
@@ -86,64 +103,44 @@ flutter test
 flutter run
 ```
 
-## Backend Integration
-
-The API contract is documented in `docs/API.MD`.
-
-Default development login from the backend seeder/simulator:
+Login pengembangan bawaan backend simulator:
 
 ```text
-email: operator@padibackend.test
-password: password
+Email    : operator@padibackend.test
+Password : password
 ```
 
-Important endpoints used by the app:
+## Perilaku Offline dan Sinkronisasi
+
+1. Respons dasbor, riwayat sensor, dan deteksi yang berhasil disimpan ke cache lokal.
+2. Ketika API tidak dapat dijangkau, repository mengembalikan cache tersebut sehingga layar tetap dapat digunakan.
+3. Banner koneksi memberi informasi bahwa aplikasi sedang offline dan menampilkan data sinkron terakhir.
+4. Polling tetap berjalan. Respons API berikutnya yang berhasil mengubah status menjadi online dan mengganti cache dengan data terbaru.
+5. Hasil scan Vision selalu disimpan secara lokal terlebih dahulu. Untuk pengguna login, hasil yang masih pending dikirim saat backend kembali tersedia.
+
+Jika perangkat belum pernah melakukan sinkronisasi, aplikasi menampilkan pesan offline yang ramah tanpa kode atau detail exception teknis.
+
+## Endpoint Backend Utama
 
 ```text
 POST /api/login
+POST /api/logout
 GET  /api/dashboard
 GET  /api/sensors/latest
 GET  /api/sensors/history?range=today|7days|30days
 GET  /api/detections
 GET  /api/detections/latest
-POST /api/paddy/predict
 GET  /api/alerts
 GET  /api/recommendations
 GET  /api/actuators/fan/status
 POST /api/actuators/fan/control
+GET  /api/vision/scans
+POST /api/vision/scans
 ```
 
-### Paddy Prediction Upload
-
-The Vision menu sends selected images to Laravel as multipart form data:
-
-```text
-POST /api/paddy/predict
-Authorization: Bearer {token}
-Accept: application/json
-Content-Type: multipart/form-data
-
-image: JPG/JPEG/PNG file, max 10 MB
-```
-
-Successful response shape:
-
-```json
-{
-  "success": true,
-  "prediction": {
-    "class_id": 3,
-    "class": "blast",
-    "display_name": "Blast",
-    "confidence": 92.74,
-    "status": "high_confidence"
-  }
-}
-```
+Kontrak lengkap tersedia pada `docs/API.MD`.
 
 ## Backend Simulator
-
-For development without physical ESP32 and real Vision service, use the Laravel simulator described in `docs/API.MD`:
 
 ```bash
 php artisan migrate --seed
@@ -151,29 +148,29 @@ php artisan nursery:simulate --count=10 --scenario=mixed
 php artisan serve
 ```
 
-Optional MQTT simulation:
+Simulasi MQTT opsional:
 
 ```bash
 php artisan mqtt:simulate-device --device=ESP32-01 --scenario=mixed --count=10 --interval=1
 php artisan mqtt:listen
 ```
 
-## Quality Checks
+## Pemeriksaan Kualitas
 
-Before pushing changes, run:
+Sebelum perubahan dikirim, jalankan:
 
 ```bash
 flutter analyze
 flutter test
 ```
 
-Current app verification:
+Kondisi verifikasi terakhir:
 
-- `flutter analyze`: no issues
-- `flutter test`: all tests passed
+- `flutter analyze`: tidak ditemukan masalah.
+- `flutter test`: seluruh pengujian lulus; pengujian inferensi native dilewati pada Windows karena DLL TensorFlow Lite tidak tersedia dan tetap dapat dijalankan pada Android.
 
-## Documentation
+## Dokumentasi
 
-- API contract: `docs/API.MD`
-- Product requirements: `docs/PRD.MD`
-
+- Kontrak API: `docs/API.MD`
+- Kebutuhan produk: `docs/PRD.MD`
+- Integrasi Vision Flutter: `docs/flutter-vision.md`

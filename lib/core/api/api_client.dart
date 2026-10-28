@@ -1,10 +1,30 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
 import '../config/app_config.dart';
 
+enum AppConnectionStatus { checking, online, offline }
+
 class ApiClient {
   ApiClient() : _dio = Dio(_baseOptions) {
+    _dio.interceptors.add(
+      InterceptorsWrapper(
+        onResponse: (response, handler) {
+          _setConnectionStatus(AppConnectionStatus.online);
+          handler.next(response);
+        },
+        onError: (error, handler) {
+          _setConnectionStatus(
+            error.response == null
+                ? AppConnectionStatus.offline
+                : AppConnectionStatus.online,
+          );
+          handler.next(error);
+        },
+      ),
+    );
     if (kDebugMode) {
       _dio.interceptors.add(
         LogInterceptor(
@@ -25,11 +45,23 @@ class ApiClient {
   );
 
   final Dio _dio;
+  final StreamController<AppConnectionStatus> _connectionController =
+      StreamController<AppConnectionStatus>.broadcast();
   String? _token;
+  AppConnectionStatus _connectionStatus = AppConnectionStatus.checking;
 
   Dio get dio => _dio;
 
   String? get token => _token;
+  AppConnectionStatus get connectionStatus => _connectionStatus;
+  Stream<AppConnectionStatus> get connectionChanges =>
+      _connectionController.stream;
+
+  void _setConnectionStatus(AppConnectionStatus status) {
+    if (_connectionStatus == status) return;
+    _connectionStatus = status;
+    _connectionController.add(status);
+  }
 
   void setToken(String token) {
     _token = token;

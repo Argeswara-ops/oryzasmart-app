@@ -5,9 +5,14 @@ import '../../shared/repositories/nursery_repository.dart';
 import '../../shared/widgets/section_card.dart';
 
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key, required this.onLogin});
+  const LoginScreen({
+    super.key,
+    required this.onLogin,
+    required this.onContinueAsGuest,
+  });
 
   final Future<void> Function(String email, String password) onLogin;
+  final VoidCallback onContinueAsGuest;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -222,6 +227,24 @@ class _LoginScreenState extends State<LoginScreen> {
                                   )
                                 : const Icon(Icons.login_rounded),
                             label: Text(_isLoading ? 'Memproses' : 'Masuk'),
+                          ),
+                          const SizedBox(height: 12),
+                          OutlinedButton.icon(
+                            onPressed: _isLoading
+                                ? null
+                                : widget.onContinueAsGuest,
+                            icon: const Icon(Icons.visibility_outlined),
+                            label: const Text('Lanjut sebagai Tamu'),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Mode tamu tidak memerlukan login dan hanya dapat mengakses Vision.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Color(0xFF64748B),
+                              fontSize: 11,
+                              height: 1.4,
+                            ),
                           ),
                         ],
                       ),

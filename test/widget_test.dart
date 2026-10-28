@@ -9,6 +9,16 @@ import 'package:padiapps/shared/models/nursery_models.dart';
 import 'package:padiapps/shared/repositories/nursery_repository.dart';
 
 void main() {
+  test('snapshot dasbor dapat diserialisasi untuk cache offline', () {
+    final snapshot = _FakeRepository().dashboardSnapshot();
+    final restored = DashboardSnapshot.fromJson(snapshot.toJson());
+
+    expect(restored.sensor.temperature, snapshot.sensor.temperature);
+    expect(restored.device.code, snapshot.device.code);
+    expect(restored.recommendation.status, snapshot.recommendation.status);
+    expect(restored.alerts, hasLength(snapshot.alerts.length));
+  });
+
   testWidgets('shows login then opens dashboard', (WidgetTester tester) async {
     SharedPreferences.setMockInitialValues({});
 
@@ -36,6 +46,33 @@ void main() {
 
     expect(find.text('ORYZA SMART'), findsOneWidget);
   });
+
+  testWidgets('mode tamu hanya membuka Vision tanpa login', (
+    WidgetTester tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          nurseryRepositoryProvider.overrideWithValue(_FakeRepository()),
+        ],
+        child: const SmartRiceNurseryApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Lewati'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Lanjut sebagai Tamu'));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.text('Mode tamu'), findsOneWidget);
+    expect(find.text('Vision'), findsOneWidget);
+    expect(find.text('Dasbor'), findsNothing);
+    expect(find.text('Device'), findsNothing);
+    expect(find.text('Settings'), findsNothing);
+  });
 }
 
 class _FakeRepository extends NurseryRepository {
@@ -54,6 +91,10 @@ class _FakeRepository extends NurseryRepository {
 
   @override
   Future<DashboardSnapshot> getDashboard() async {
+    return dashboardSnapshot();
+  }
+
+  DashboardSnapshot dashboardSnapshot() {
     final now = DateTime.now();
     return DashboardSnapshot(
       device: DeviceStatus(

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:image_picker/image_picker.dart';
@@ -15,6 +17,10 @@ class NurseryRepository {
   static const _userNameKey = 'oryza_auth_user_name';
   static const _userEmailKey = 'oryza_auth_user_email';
   static const _userRoleKey = 'oryza_auth_user_role';
+  static const _dashboardCacheKey = 'oryza_dashboard_cache_v1';
+  static const _sensorHistoryCachePrefix = 'oryza_sensor_history_cache_v1_';
+  static const _detectionsCacheKey = 'oryza_detections_cache_v1';
+  static const _lastSyncKey = 'oryza_last_sync_at';
   static const _secureStorage = FlutterSecureStorage();
 
   final ApiClient _client;
@@ -87,12 +93,26 @@ class NurseryRepository {
   }
 
   Future<DashboardSnapshot> getDashboard() async {
-    final response = await _client.dio.get<Map<String, dynamic>>('/dashboard');
-    final data = _client.dataEnvelope(response);
-    if (data.isEmpty) {
-      throw const ApiException('Response dashboard Laravel kosong.');
+    try {
+      final response = await _client.dio.get<Map<String, dynamic>>(
+        '/dashboard',
+      );
+      final data = _client.dataEnvelope(response);
+      if (data.isEmpty) {
+        throw const ApiException('Response dashboard Laravel kosong.');
+      }
+      final snapshot = _dashboardFromApi(data);
+      await _saveJson(_dashboardCacheKey, snapshot.toJson());
+      await _recordSuccessfulSync();
+      return snapshot;
+    } on DioException {
+      final cached = await _loadDashboardCache();
+      if (cached != null) return cached;
+      throw const OfflineDataUnavailableException();
     }
+  }
 
+  DashboardSnapshot _dashboardFromApi(Map<String, dynamic> data) {
     final fallback = _mockDashboard();
     final alerts = _applyReadState(
       _alertsFrom(data['alerts'], fallback.alerts),
@@ -138,18 +158,29 @@ class NurseryRepository {
   }
 
   Future<List<SensorReading>> getSensorHistory({String range = 'today'}) async {
-    final response = await _client.dio.get<dynamic>(
-      '/sensors/history',
-      queryParameters: {'range': range},
-    );
-    final body = response.data;
-    final items = body is Map<String, dynamic>
-        ? _seriesFromHistory(body)
-        : _client.listEnvelope(response);
-    return items
-        .whereType<Map<String, dynamic>>()
-        .map(SensorReading.fromJson)
-        .toList();
+    final cacheKey = '$_sensorHistoryCachePrefix$range';
+    try {
+      final response = await _client.dio.get<dynamic>(
+        '/sensors/history',
+        queryParameters: {'range': range},
+      );
+      final body = response.data;
+      final items = body is Map<String, dynamic>
+          ? _seriesFromHistory(body)
+          : _client.listEnvelope(response);
+      final readings = items
+          .whereType<Map<String, dynamic>>()
+          .map(SensorReading.fromJson)
+          .toList();
+      await _saveJson(
+        cacheKey,
+        readings.map((reading) => reading.toJson()).toList(),
+      );
+      await _recordSuccessfulSync();
+      return readings;
+    } on DioException {
+      return _loadListCache(cacheKey, SensorReading.fromJson);
+    }
   }
 
   Future<SensorReading> getLatestSensor() async {
@@ -208,13 +239,28 @@ class NurseryRepository {
         '/detections',
         queryParameters: queryParameters,
       );
-      return _client
+      final detections = _client
           .listEnvelope(response)
           .whereType<Map<String, dynamic>>()
           .map(Detection.fromJson)
           .toList();
+      await _saveJson(
+        _detectionsCacheKey,
+        detections.map((detection) => detection.toJson()).toList(),
+      );
+      await _recordSuccessfulSync();
+      return detections;
     } on DioException {
-      return _mockDetections();
+      final cached = await _loadListCache(
+        _detectionsCacheKey,
+        Detection.fromJson,
+      );
+      return cached.where((detection) {
+        final matchesType =
+            type == null || type == 'all' || detection.type == type;
+        final matchesCamera = camera == null || detection.cameraId == camera;
+        return matchesType && matchesCamera;
+      }).toList();
     }
   }
 
@@ -297,7 +343,56 @@ class NurseryRepository {
     await prefs.remove(_userNameKey);
     await prefs.remove(_userEmailKey);
     await prefs.remove(_userRoleKey);
+    await prefs.remove(_dashboardCacheKey);
+    await prefs.remove(_detectionsCacheKey);
+    await prefs.remove(_lastSyncKey);
+    final historyKeys = prefs.getKeys().where(
+      (key) => key.startsWith(_sensorHistoryCachePrefix),
+    );
+    for (final key in historyKeys) {
+      await prefs.remove(key);
+    }
     _readAlertIds.clear();
+  }
+
+  Future<DashboardSnapshot?> _loadDashboardCache() async {
+    final value = await _loadJson(_dashboardCacheKey);
+    if (value is! Map<String, dynamic>) return null;
+    try {
+      return DashboardSnapshot.fromJson(value);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<List<T>> _loadListCache<T>(
+    String key,
+    T Function(Map<String, dynamic>) fromJson,
+  ) async {
+    final value = await _loadJson(key);
+    if (value is! List) return <T>[];
+    return value.whereType<Map<String, dynamic>>().map(fromJson).toList();
+  }
+
+  Future<Object?> _loadJson(String key) async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(key);
+    if (raw == null || raw.isEmpty) return null;
+    try {
+      return jsonDecode(raw);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _saveJson(String key, Object value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(key, jsonEncode(value));
+  }
+
+  Future<void> _recordSuccessfulSync() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_lastSyncKey, DateTime.now().toIso8601String());
   }
 
   Future<List<Recommendation>> getRecommendations() async {
@@ -331,7 +426,12 @@ class NurseryRepository {
       );
       _fan = FanState.fromJson(_client.dataEnvelope(response));
       return _fan;
-    } on DioException {
+    } on DioException catch (error) {
+      if (error.response == null) {
+        throw const ApiException(
+          'Kontrol kipas tidak tersedia saat offline. Data terakhir tetap ditampilkan.',
+        );
+      }
       rethrow;
     }
   }
@@ -399,7 +499,12 @@ class NurseryRepository {
       );
       final data = _client.dataEnvelope(response);
       _fan = data.isEmpty ? await getFanStatus() : FanState.fromJson(data);
-    } on DioException {
+    } on DioException catch (error) {
+      if (error.response == null) {
+        throw const ApiException(
+          'Kontrol kipas tidak tersedia saat offline. Data terakhir tetap ditampilkan.',
+        );
+      }
       rethrow;
     }
     return _fan;
@@ -533,36 +638,6 @@ class NurseryRepository {
       unreadAlerts: alerts.where((alert) => !alert.isRead).length,
     );
   }
-
-  List<Detection> _mockDetections() {
-    final now = DateTime.now();
-    return [
-      Detection(
-        cameraId: 'CAM-01',
-        type: 'disease',
-        className: 'Rice Blast',
-        confidence: 0.92,
-        image: 'detections/cam01-001.jpg',
-        detectedAt: now.subtract(const Duration(minutes: 6)),
-      ),
-      Detection(
-        cameraId: 'CAM-01',
-        type: 'pest',
-        className: 'Brown Planthopper',
-        confidence: 0.87,
-        image: 'detections/cam01-002.jpg',
-        detectedAt: now.subtract(const Duration(hours: 1, minutes: 31)),
-      ),
-      Detection(
-        cameraId: 'CAM-01',
-        type: 'healthy',
-        className: 'Healthy',
-        confidence: 0.96,
-        image: 'detections/cam01-003.jpg',
-        detectedAt: now.subtract(const Duration(hours: 4)),
-      ),
-    ];
-  }
 }
 
 class LoginException implements Exception {
@@ -595,6 +670,14 @@ class LoginException implements Exception {
 
   @override
   String toString() => message;
+}
+
+class OfflineDataUnavailableException implements Exception {
+  const OfflineDataUnavailableException();
+
+  @override
+  String toString() =>
+      'Anda sedang offline dan belum ada data tersinkron di perangkat ini.';
 }
 
 class PredictionException implements Exception {

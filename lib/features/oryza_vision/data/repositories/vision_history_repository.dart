@@ -106,6 +106,8 @@ class VisionHistoryRepository {
   static const _storageKey = 'oryza_vision_scan_history_v1';
   final ApiClient _client;
 
+  bool get isAuthenticated => _client.token != null;
+
   Future<List<VisionScanRecord>> loadLocal() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_storageKey);
