@@ -53,7 +53,7 @@ class DevicesScreen extends ConsumerWidget {
                       label: 'Sensor terbaru',
                       value: device.latestSensor == null
                           ? 'Belum ada data'
-                          : '${device.latestSensor!.temperature.toStringAsFixed(1)}°C · Air ${device.latestSensor!.waterLevel.toStringAsFixed(0)}%',
+                          : '${device.latestSensor!.temperature.toStringAsFixed(1)}°C · Kelembapan ${device.latestSensor!.humidity.toStringAsFixed(0)}%',
                     ),
                   ],
                 ),
@@ -267,7 +267,7 @@ class _FanDeviceCard extends ConsumerWidget {
     final fanState = fanAsync.value ?? fan;
     final isBusy = ref.watch(fanControlBusyProvider);
     final canControl = deviceOnline && fanState.deviceOnline;
-    final isOn = fanState.status == 'ON';
+    final isOn = fanState.isOn;
     final color = isOn ? AppTheme.primaryGreen : AppTheme.textMuted;
 
     return SectionCard(

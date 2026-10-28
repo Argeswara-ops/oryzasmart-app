@@ -91,8 +91,8 @@ class _SensorHistory extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final spec = _MetricSpec.fromKey(metric);
-    final values = [for (final item in items) spec.valueOf(item)];
-    final stats = _Stats.from(values);
+    final values = items.map(spec.valueOf).whereType<double>().toList();
+    final stats = values.isEmpty ? null : _Stats.from(values);
 
     return Column(
       children: [
@@ -100,16 +100,22 @@ class _SensorHistory extends StatelessWidget {
         const SizedBox(height: 10),
         _MetricControl(value: metric, onChanged: onMetricChanged),
         const SizedBox(height: 12),
-        _StatsGrid(stats: stats, unit: spec.unit),
-        const SizedBox(height: 12),
-        _ChartCard(
-          title: 'Grafik ${spec.label}',
-          legends: [_ChartLegend(label: spec.unit, color: spec.color)],
-          minY: stats.minY,
-          maxY: stats.maxY,
-          yInterval: stats.yInterval,
-          lines: [_ChartLine(values: values, color: spec.color, fill: true)],
-        ),
+        if (stats == null)
+          const SectionCard(
+            child: Text('Sensor belum tersedia untuk periode ini.'),
+          )
+        else ...[
+          _StatsGrid(stats: stats, unit: spec.unit),
+          const SizedBox(height: 12),
+          _ChartCard(
+            title: 'Grafik ${spec.label}',
+            legends: [_ChartLegend(label: spec.unit, color: spec.color)],
+            minY: stats.minY,
+            maxY: stats.maxY,
+            yInterval: stats.yInterval,
+            lines: [_ChartLine(values: values, color: spec.color, fill: true)],
+          ),
+        ],
         const SizedBox(height: 12),
         _NpkChart(items: items),
       ],
@@ -124,10 +130,22 @@ class _NpkChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final nitrogen = [for (final item in items) item.nitrogen];
-    final phosphorus = [for (final item in items) item.phosphorus];
-    final potassium = [for (final item in items) item.potassium];
+    final nitrogen = items
+        .map((item) => item.nitrogen)
+        .whereType<double>()
+        .toList();
+    final phosphorus = items
+        .map((item) => item.phosphorus)
+        .whereType<double>()
+        .toList();
+    final potassium = items
+        .map((item) => item.potassium)
+        .whereType<double>()
+        .toList();
     final allValues = [...nitrogen, ...phosphorus, ...potassium];
+    if (allValues.isEmpty) {
+      return const SectionCard(child: Text('Sensor NPK belum tersedia.'));
+    }
     final stats = _Stats.from(allValues);
 
     return _ChartCard(
@@ -559,7 +577,7 @@ class _MetricSpec {
   final String label;
   final String unit;
   final Color color;
-  final double Function(SensorReading reading) valueOf;
+  final double? Function(SensorReading reading) valueOf;
 
   static _MetricSpec fromKey(String key) {
     return switch (key) {

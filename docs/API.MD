@@ -408,7 +408,19 @@ Payload heartbeat:
 {"status":"ON"}
 ```
 
-Payload sensor:
+Untuk kompatibilitas dengan kode testing `docs/ESP.MD`, payload teks polos `online` dan `offline` juga diterima.
+
+Payload minimum sensor DHT11:
+
+```json
+{
+  "device": "ESP32-01",
+  "temperature": 28.5,
+  "humidity": 74
+}
+```
+
+Payload sensor lengkap:
 
 ```json
 {

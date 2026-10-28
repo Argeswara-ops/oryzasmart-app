@@ -55,29 +55,39 @@ class SensorReading {
     required this.deviceId,
     required this.temperature,
     required this.humidity,
-    required this.nitrogen,
-    required this.phosphorus,
-    required this.potassium,
-    required this.light,
-    required this.ultrasonic,
-    this.lightPercent = 0,
-    this.uvIndex = 0,
-    this.waterLevel = 0,
+    this.nitrogen,
+    this.phosphorus,
+    this.potassium,
+    this.light,
+    this.lightPercent,
+    this.uvIndex,
+    this.ultrasonic,
+    this.distanceCm,
+    this.levelPercent,
+    this.waterLevelPercent,
+    this.fanState,
+    this.fanMode,
     required this.createdAt,
   });
 
   final String deviceId;
   final double temperature;
   final double humidity;
-  final double nitrogen;
-  final double phosphorus;
-  final double potassium;
-  final double light;
-  final double ultrasonic;
-  final double lightPercent;
-  final double uvIndex;
-  final double waterLevel;
+  final double? nitrogen;
+  final double? phosphorus;
+  final double? potassium;
+  final double? light;
+  final double? lightPercent;
+  final double? uvIndex;
+  final double? ultrasonic;
+  final double? distanceCm;
+  final double? levelPercent;
+  final double? waterLevelPercent;
+  final String? fanState;
+  final String? fanMode;
   final DateTime createdAt;
+
+  double? get waterLevel => waterLevelPercent ?? levelPercent;
 
   factory SensorReading.fromJson(Map<String, dynamic> json) {
     final water = json['water_level'];
@@ -85,22 +95,24 @@ class SensorReading {
       deviceId: '${json['device_id'] ?? json['device_code'] ?? 'ESP32-01'}',
       temperature: _toDouble(json['temperature']),
       humidity: _toDouble(json['humidity']),
-      nitrogen: _toDouble(json['nitrogen']),
-      phosphorus: _toDouble(json['phosphorus']),
-      potassium: _toDouble(json['potassium']),
-      light: _toDouble(json['light']),
-      ultrasonic: _toDouble(
+      nitrogen: _toNullableDouble(json['nitrogen']),
+      phosphorus: _toNullableDouble(json['phosphorus']),
+      potassium: _toNullableDouble(json['potassium']),
+      light: _toNullableDouble(json['light']),
+      lightPercent: _toNullableDouble(json['light_percent']),
+      uvIndex: _toNullableDouble(json['uv_index']),
+      ultrasonic: _toNullableDouble(json['ultrasonic']),
+      distanceCm: _toNullableDouble(
         json['distance_cm'] ??
-            json['ultrasonic'] ??
             (water is Map<String, dynamic> ? water['distance_cm'] : null),
       ),
-      lightPercent: _toDouble(json['light_percent'] ?? json['light']),
-      uvIndex: _toDouble(json['uv_index']),
-      waterLevel: _toDouble(
+      levelPercent: _toNullableDouble(json['level_percent']),
+      waterLevelPercent: _toNullableDouble(
         json['water_level_percent'] ??
-            json['level_percent'] ??
             (water is Map<String, dynamic> ? water['percent'] : water),
       ),
+      fanState: json['fan_state']?.toString(),
+      fanMode: json['fan_mode']?.toString(),
       createdAt:
           _toDateTime(json['created_at'] ?? json['recorded_at']) ??
           DateTime.now(),
@@ -118,8 +130,11 @@ class SensorReading {
     'light_percent': lightPercent,
     'uv_index': uvIndex,
     'ultrasonic': ultrasonic,
-    'distance_cm': ultrasonic,
-    'level_percent': waterLevel,
+    'distance_cm': distanceCm,
+    'level_percent': levelPercent,
+    'water_level_percent': waterLevelPercent,
+    'fan_state': fanState,
+    'fan_mode': fanMode,
     'created_at': createdAt.toIso8601String(),
   };
 }
@@ -222,17 +237,26 @@ class FanState {
   const FanState({
     required this.status,
     required this.mode,
+    bool? isOn,
     this.deviceOnline = true,
-  });
+  }) : isOn = isOn ?? status == 'ON';
 
   final String status;
   final String mode;
+  final bool isOn;
   final bool deviceOnline;
 
-  FanState copyWith({String? status, String? mode, bool? deviceOnline}) {
+  FanState copyWith({
+    String? status,
+    String? mode,
+    bool? isOn,
+    bool? deviceOnline,
+  }) {
+    final nextStatus = status ?? this.status;
     return FanState(
-      status: status ?? this.status,
+      status: nextStatus,
       mode: mode ?? this.mode,
+      isOn: isOn ?? (status == null ? this.isOn : nextStatus == 'ON'),
       deviceOnline: deviceOnline ?? this.deviceOnline,
     );
   }
@@ -242,9 +266,11 @@ class FanState {
     if (nested is Map<String, dynamic>) {
       return FanState.fromJson(nested);
     }
+    final status = _normalizeStatus(json['status'] ?? 'OFF');
     return FanState(
-      status: _normalizeStatus(json['status'] ?? 'OFF'),
+      status: status,
       mode: _normalizeStatus(json['mode'] ?? 'MANUAL'),
+      isOn: json['is_on'] is bool ? json['is_on'] as bool : status == 'ON',
       deviceOnline: json['device_online'] is bool
           ? json['device_online'] as bool
           : true,
@@ -253,6 +279,7 @@ class FanState {
 
   Map<String, dynamic> toJson() => {
     'status': status,
+    'is_on': isOn,
     'mode': mode,
     'device_online': deviceOnline,
   };
@@ -368,6 +395,12 @@ Map<String, dynamic> _map(Object? value) =>
 double _toDouble(Object? value) {
   if (value is num) return value.toDouble();
   return double.tryParse('$value') ?? 0;
+}
+
+double? _toNullableDouble(Object? value) {
+  if (value == null) return null;
+  if (value is num) return value.toDouble();
+  return double.tryParse('$value');
 }
 
 int? _toNullableInt(Object? value) {

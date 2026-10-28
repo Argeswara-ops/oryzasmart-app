@@ -9,6 +9,13 @@ import '../../shared/widgets/section_card.dart';
 import '../../shared/widgets/status_chip.dart';
 import 'dashboard_controller.dart';
 
+const _sensorUnavailable = 'Sensor belum tersedia';
+
+String _sensorValue(double? value, {String suffix = '', int decimals = 0}) {
+  if (value == null) return _sensorUnavailable;
+  return '${value.toStringAsFixed(decimals)}$suffix';
+}
+
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key, required this.user});
 
@@ -253,7 +260,7 @@ class _ConditionBanner extends StatelessWidget {
               Expanded(
                 child: _BannerMetric(
                   label: 'Ketinggian air',
-                  value: '${snapshot.sensor.waterLevel.toStringAsFixed(0)}%',
+                  value: _sensorValue(snapshot.sensor.waterLevel, suffix: '%'),
                 ),
               ),
             ],
@@ -293,43 +300,51 @@ class _SensorGrid extends StatelessWidget {
       _SensorItem(
         icon: Icons.wb_sunny_rounded,
         label: 'Cahaya',
-        value: '${sensor.lightPercent.toStringAsFixed(0)}%',
-        status: 'OPTIMAL',
+        value: _sensorValue(sensor.lightPercent, suffix: '%'),
+        status: sensor.lightPercent == null ? 'BELUM TERSEDIA' : 'OPTIMAL',
         accentColor: AppTheme.warning,
       ),
       _SensorItem(
         icon: Icons.waves_rounded,
         label: 'Ketinggian Air',
-        value: '${sensor.waterLevel.toStringAsFixed(0)}%',
-        status: sensor.waterLevel < 30 ? 'RENDAH' : 'STABIL',
+        value: _sensorValue(sensor.waterLevel, suffix: '%'),
+        status: sensor.waterLevel == null
+            ? 'BELUM TERSEDIA'
+            : sensor.waterLevel! < 30
+            ? 'RENDAH'
+            : 'STABIL',
         accentColor: AppTheme.infoBlue,
       ),
       _SensorItem(
         icon: Icons.grass_rounded,
         label: 'Nitrogen',
-        value: '${sensor.nitrogen.toStringAsFixed(0)} mg/kg',
-        status: 'CUKUP',
+        value: _sensorValue(sensor.nitrogen, suffix: ' mg/kg'),
+        status: sensor.nitrogen == null ? 'BELUM TERSEDIA' : 'CUKUP',
         accentColor: AppTheme.primaryGreen,
       ),
       _SensorItem(
         icon: Icons.spa_rounded,
         label: 'Fosfor',
-        value: '${sensor.phosphorus.toStringAsFixed(0)} mg/kg',
-        status: 'CUKUP',
+        value: _sensorValue(sensor.phosphorus, suffix: ' mg/kg'),
+        status: sensor.phosphorus == null ? 'BELUM TERSEDIA' : 'CUKUP',
         accentColor: AppTheme.teal,
       ),
       _SensorItem(
         icon: Icons.eco_rounded,
         label: 'Kalium',
-        value: '${sensor.potassium.toStringAsFixed(0)} mg/kg',
-        status: 'CUKUP',
+        value: _sensorValue(sensor.potassium, suffix: ' mg/kg'),
+        status: sensor.potassium == null ? 'BELUM TERSEDIA' : 'CUKUP',
         accentColor: AppTheme.primaryGreenDark,
       ),
       _SensorItem(
         icon: Icons.wb_twilight_rounded,
         label: 'Indeks UV',
-        value: sensor.uvIndex.toStringAsFixed(1),
-        status: sensor.uvIndex >= 6 ? 'TINGGI' : 'NORMAL',
+        value: _sensorValue(sensor.uvIndex, decimals: 1),
+        status: sensor.uvIndex == null
+            ? 'BELUM TERSEDIA'
+            : sensor.uvIndex! >= 6
+            ? 'TINGGI'
+            : 'NORMAL',
         accentColor: AppTheme.teal,
       ),
     ];
@@ -432,7 +447,7 @@ class _FanControl extends ConsumerWidget {
     final isBusy = ref.watch(fanControlBusyProvider);
     final canControl = deviceOnline && fanState.deviceOnline;
 
-    final isFanOn = fanState.status == 'ON';
+    final isFanOn = fanState.isOn;
 
     return SectionCard(
       child: Column(

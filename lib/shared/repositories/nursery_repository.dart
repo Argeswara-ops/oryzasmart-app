@@ -570,7 +570,7 @@ class NurseryRepository {
         lightPercent: 65,
         uvIndex: 3.2,
         ultrasonic: 14,
-        waterLevel: 64,
+        waterLevelPercent: 64,
         createdAt: now,
       ),
       fan: _fan,
