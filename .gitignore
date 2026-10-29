@@ -44,3 +44,8 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Firebase & sensitive configurations (use .example templates instead)
+android/app/google-services.json
+lib/firebase_options.dart
+docs/google-services.json

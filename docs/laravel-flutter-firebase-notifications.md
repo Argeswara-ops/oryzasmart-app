@@ -41,9 +41,12 @@ perangkat lain menggantikan token sebelumnya.
    Jika project berubah, regenerasi options dengan FlutterFire CLI; jangan
    menyalin values dari project lain.
 
-`google-services.json` adalah konfigurasi aplikasi klien. Jangan pernah
-menaruh service-account JSON atau private key server di Flutter, file tersebut,
-atau repository.
+Catatan Keamanan:
+`android/app/google-services.json` dan `lib/firebase_options.dart` telah dimasukkan ke `.gitignore` untuk mencegah kebocoran rahasia (Secret Scanning) di repository publik GitHub. Template konfigurasi disediakan di:
+- `android/app/google-services.json.example`
+- `lib/firebase_options.dart.example`
+
+`google-services.json` adalah konfigurasi aplikasi klien. Jangan pernah menaruh service-account JSON atau private key server di Flutter, file tersebut, atau repository. Pastikan juga API key di Google Cloud Console telah dibatasi (Application restrictions: Android apps dengan package name & SHA-1, serta API restrictions hanya untuk Firebase APIs yang digunakan).
 
 Untuk iOS, daftarkan iOS bundle ID di Firebase, tambahkan konfigurasi iOS yang
 sesuai, dan hubungkan APNs authentication key pada Firebase Console.
