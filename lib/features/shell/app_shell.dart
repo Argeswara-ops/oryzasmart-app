@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/api/api_client.dart';
+import '../../core/api/api_providers.dart';
 import '../../core/theme/app_theme.dart';
 import '../../shared/models/nursery_models.dart';
 import '../../shared/repositories/nursery_repository.dart';
@@ -41,14 +43,17 @@ class _AppShellState extends ConsumerState<AppShell> {
   int _targetIndexForAlert(SystemAlert alert) {
     final text = '${alert.title} ${alert.message}'.toLowerCase();
     if (text.contains('riwayat') || text.contains('history')) return 3;
-    // Alert perangkat/kamera tetap diarahkan ke dashboard. Tab Vision sekarang
-    // khusus scan manual dan tidak lagi memiliki detail CAM.
+    // Alert perangkat tetap diarahkan ke dashboard. Tab Vision khusus scan
+    // manual dari kamera/galeri perangkat pengguna.
     return 0;
   }
 
   @override
   Widget build(BuildContext context) {
     final dashboardState = ref.watch(dashboardProvider);
+    final connectionStatus =
+        ref.watch(connectionStatusProvider).value ??
+        AppConnectionStatus.checking;
     final alertCount = dashboardState.maybeWhen(
       data: (data) => data.unreadAlerts,
       orElse: () => 0,
@@ -160,9 +165,16 @@ class _AppShellState extends ConsumerState<AppShell> {
     return Scaffold(
       appBar: buildAppBar(),
       body: SafeArea(
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 250),
-          child: body,
+        child: Column(
+          children: [
+            _ConnectionBanner(status: connectionStatus),
+            Expanded(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 250),
+                child: body,
+              ),
+            ),
+          ],
         ),
       ),
       bottomNavigationBar: Container(
@@ -210,6 +222,59 @@ class _AppShellState extends ConsumerState<AppShell> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _ConnectionBanner extends StatelessWidget {
+  const _ConnectionBanner({required this.status});
+
+  final AppConnectionStatus status;
+
+  @override
+  Widget build(BuildContext context) {
+    final offline = status == AppConnectionStatus.offline;
+    final checking = status == AppConnectionStatus.checking;
+    final color = offline
+        ? const Color(0xFFD97706)
+        : checking
+        ? const Color(0xFF2563EB)
+        : AppTheme.primaryGreen;
+    final message = offline
+        ? 'Anda offline · Menampilkan data terakhir yang tersinkron.'
+        : checking
+        ? 'Memeriksa koneksi…'
+        : 'Anda online · Data diperbarui otomatis.';
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
+      width: double.infinity,
+      color: color.withValues(alpha: 0.10),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        children: [
+          Icon(
+            offline
+                ? Icons.cloud_off_rounded
+                : checking
+                ? Icons.sync_rounded
+                : Icons.cloud_done_rounded,
+            size: 17,
+            color: color,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(
+                color: color,
+                fontSize: 11.5,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

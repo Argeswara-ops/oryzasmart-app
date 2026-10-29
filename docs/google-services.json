@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "270720028370",
+    "project_id": "oryzasmart-f2ad2",
+    "storage_bucket": "oryzasmart-f2ad2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:270720028370:android:67b68f948831765aa5270b",
+        "android_client_info": {
+          "package_name": "com.example.padiapps"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAnGhyAKajkdcTEYPMQKKW4JjmskA9uwjg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

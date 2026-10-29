@@ -275,6 +275,9 @@ class _FakeVisionHistoryRepository extends VisionHistoryRepository {
   bool online = false;
 
   @override
+  bool get isAuthenticated => true;
+
+  @override
   Future<List<VisionScanRecord>> loadLocal() async => records;
 
   @override

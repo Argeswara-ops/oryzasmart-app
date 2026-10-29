@@ -123,6 +123,18 @@ class VisionHistoryController extends AsyncNotifier<VisionHistoryState> {
         return;
       }
 
+      if (!_repository.isAuthenticated) {
+        state = AsyncData(
+          current.copyWith(
+            isSyncing: false,
+            networkStatus: VisionNetworkStatus.online,
+            syncMessage:
+                'Anda online. Mode tamu menyimpan riwayat scan di perangkat.',
+          ),
+        );
+        return;
+      }
+
       final updated = <VisionScanRecord>[];
       var failures = 0;
       for (final record in current.records) {
