@@ -37,10 +37,35 @@ void main() {
       );
     },
   );
+
+  test('FCM token disinkronkan dan dihapus melalui endpoint Laravel', () async {
+    final client = ApiClient();
+    final adapter = _RecordingAdapter();
+    client.dio.httpClientAdapter = adapter;
+    final repository = NurseryRepository(client);
+    client.setToken('test-sanctum-token');
+
+    await repository.syncFcmToken('test-fcm-registration-token');
+    await repository.removeFcmToken();
+
+    expect(adapter.requests, hasLength(2));
+    expect(adapter.requests[0].method, 'POST');
+    expect(adapter.requests[0].path, '/user/fcm-token');
+    expect(adapter.requests[0].data, {
+      'fcm_token': 'test-fcm-registration-token',
+    });
+    expect(
+      adapter.requests[0].headers['Authorization'],
+      'Bearer test-sanctum-token',
+    );
+    expect(adapter.requests[1].method, 'DELETE');
+    expect(adapter.requests[1].path, '/user/fcm-token');
+  });
 }
 
 class _RecordingAdapter implements HttpClientAdapter {
   final List<String> paths = [];
+  final List<RequestOptions> requests = [];
 
   @override
   Future<ResponseBody> fetch(
@@ -49,6 +74,7 @@ class _RecordingAdapter implements HttpClientAdapter {
     Future<void>? cancelFuture,
   ) async {
     paths.add(options.path);
+    requests.add(options);
     final data = switch (options.path) {
       '/dashboard' => {
         'data': {

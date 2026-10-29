@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer' as developer;
 
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -12,9 +13,7 @@ import '../models/nursery_models.dart';
 
 class NurseryRepository {
   NurseryRepository(this._client) {
-    NotificationService.instance.onTokenRefresh = (token) {
-      syncFcmToken(token);
-    };
+    NotificationService.instance.onTokenRefresh = syncFcmToken;
   }
 
   static const _tokenKey = 'oryza_auth_token';
@@ -65,7 +64,7 @@ class NurseryRepository {
       await _saveSession(token: token, user: user);
       final fcmToken = NotificationService.instance.fcmToken;
       if (fcmToken != null && fcmToken.isNotEmpty) {
-        syncFcmToken(fcmToken);
+        await syncFcmToken(fcmToken);
       }
       return user;
     } on DioException catch (error) {
@@ -104,7 +103,7 @@ class NurseryRepository {
       _client.setToken(token);
       final fcmToken = NotificationService.instance.fcmToken;
       if (fcmToken != null && fcmToken.isNotEmpty) {
-        syncFcmToken(fcmToken);
+        await syncFcmToken(fcmToken);
       }
       return AuthUser(
         id: prefs.getInt(_userIdKey) ?? 0,
@@ -118,19 +117,36 @@ class NurseryRepository {
   }
 
   Future<void> syncFcmToken(String? fcmToken) async {
-    if (fcmToken == null || fcmToken.isEmpty) return;
+    if (fcmToken == null || fcmToken.isEmpty || _client.token == null) {
+      return;
+    }
+
     try {
       await _client.dio.post<Map<String, dynamic>>(
         '/user/fcm-token',
         data: {'fcm_token': fcmToken},
       );
-    } catch (_) {}
+    } on DioException catch (error) {
+      developer.log(
+        'Failed to sync FCM token with Laravel '
+        '(HTTP ${error.response?.statusCode ?? 'network error'}).',
+        name: 'NurseryRepository',
+      );
+    }
   }
 
   Future<void> removeFcmToken() async {
+    if (_client.token == null) return;
+
     try {
       await _client.dio.delete<Map<String, dynamic>>('/user/fcm-token');
-    } catch (_) {}
+    } on DioException catch (error) {
+      developer.log(
+        'Failed to remove FCM token from Laravel '
+        '(HTTP ${error.response?.statusCode ?? 'network error'}).',
+        name: 'NurseryRepository',
+      );
+    }
   }
 
   Future<DashboardSnapshot> getDashboard() async {

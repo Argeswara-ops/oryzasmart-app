@@ -19,7 +19,7 @@ class NotificationService {
   NotificationService._();
   static final NotificationService instance = NotificationService._();
 
-  final FirebaseMessaging _fcm = FirebaseMessaging.instance;
+  FirebaseMessaging get _fcm => FirebaseMessaging.instance;
   final FlutterLocalNotificationsPlugin _localNotif =
       FlutterLocalNotificationsPlugin();
 
@@ -27,7 +27,7 @@ class NotificationService {
   String? get fcmToken => _fcmToken;
 
   /// Callback opsional yang dipanggil jika token FCM berganti/refresh
-  void Function(String newToken)? onTokenRefresh;
+  Future<void> Function(String newToken)? onTokenRefresh;
 
   static const AndroidNotificationChannel _channel = AndroidNotificationChannel(
     'high_importance_channel',
@@ -83,28 +83,25 @@ class NotificationService {
       await androidImplementation.requestNotificationsPermission();
     }
 
-    // 4. Ambil dan simpan FCM token
-    try {
-      _fcmToken = await _fcm.getToken();
+    // 4. Ambil token registrasi FCM yang digunakan backend Laravel.
+    // ignore: deprecated_member_use
+    _fcm.onTokenRefresh.listen((token) async {
+      _fcmToken = token;
       developer.log(
-        '========================================\n'
-        'FCM TOKEN: $_fcmToken\n'
-        '========================================',
+        'FCM registration token refreshed',
         name: 'NotificationService',
       );
+      await onTokenRefresh?.call(token);
+    });
+    try {
+      // ignore: deprecated_member_use
+      _fcmToken = await _fcm.getToken();
     } catch (e) {
       developer.log(
-        'Failed to get FCM token: $e',
+        'Failed to get FCM registration token: $e',
         name: 'NotificationService',
       );
     }
-
-    // Listener jika token diperbarui
-    _fcm.onTokenRefresh.listen((newToken) {
-      _fcmToken = newToken;
-      developer.log('FCM Token refreshed: $newToken', name: 'NotificationService');
-      onTokenRefresh?.call(newToken);
-    });
 
     // 5. Handler saat aplikasi aktif di layar (Foreground)
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
@@ -155,8 +152,9 @@ class NotificationService {
     }
   }
 
-  /// Memaksa pengambilan token FCM terbaru
+  /// Gets the FCM registration token used by the Laravel backend.
   Future<String?> getOrRefreshToken() async {
+    // ignore: deprecated_member_use
     _fcmToken = await _fcm.getToken();
     return _fcmToken;
   }
