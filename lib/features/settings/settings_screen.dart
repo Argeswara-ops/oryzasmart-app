@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -154,11 +156,23 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
               ),
             ),
             children: [
-              _ConfigField(title: 'Backend API', value: AppConfig.apiBaseUrl),
+              _ConfigField(title: 'Backend API (Laravel)', value: AppConfig.apiBaseUrl),
               const SizedBox(height: 10),
-              _ConfigField(title: 'Device ID', value: AppConfig.deviceId),
+              _ConfigField(title: 'Database Engine', value: AppConfig.databaseInfo),
               const SizedBox(height: 10),
-              const _ConfigField(title: 'Alur Data', value: AppConfig.dataFlow),
+              _ConfigField(title: 'MQTT Broker', value: AppConfig.mqttBroker),
+              const SizedBox(height: 10),
+              const _ConfigField(title: 'MQTT Client ID', value: 'laravel_oryza_smart'),
+              const SizedBox(height: 10),
+              _ConfigField(title: 'Device ID Lapangan', value: AppConfig.deviceId),
+              const SizedBox(height: 10),
+              _ConfigField(title: 'Topik Sensor', value: AppConfig.mqttSensorTopic),
+              const SizedBox(height: 10),
+              _ConfigField(title: 'Topik Aktuator Pompa', value: AppConfig.mqttActuatorTopic),
+              const SizedBox(height: 10),
+              _ConfigField(title: 'Topik Status ESP32', value: AppConfig.mqttStatusTopic),
+              const SizedBox(height: 10),
+              const _ConfigField(title: 'Alur Data Sistem', value: AppConfig.dataFlow),
             ],
           ),
         ),
@@ -293,6 +307,9 @@ class _ThresholdEditor extends StatefulWidget {
 class _ThresholdEditorState extends State<_ThresholdEditor> {
   late RangeValues _values;
   bool _saving = false;
+  bool _saved = false;
+  Timer? _debounceTimer;
+  Timer? _savedIndicatorTimer;
 
   @override
   void initState() {
@@ -305,13 +322,50 @@ class _ThresholdEditorState extends State<_ThresholdEditor> {
   }
 
   @override
+  void dispose() {
+    _debounceTimer?.cancel();
+    _savedIndicatorTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _autoSave() async {
+    _debounceTimer?.cancel();
+    final type = widget.threshold.sensorType;
+    if (_values.start == widget.threshold.minValue &&
+        _values.end == widget.threshold.maxValue) {
+      return;
+    }
+
+    setState(() {
+      _saving = true;
+      _saved = false;
+    });
+
+    await widget.onSave(
+      SensorThreshold(
+        sensorType: type,
+        minValue: _values.start,
+        maxValue: _values.end,
+      ),
+    );
+
+    if (mounted) {
+      setState(() {
+        _saving = false;
+        _saved = true;
+      });
+      _savedIndicatorTimer?.cancel();
+      _savedIndicatorTimer = Timer(const Duration(seconds: 2), () {
+        if (mounted) setState(() => _saved = false);
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final type = widget.threshold.sensorType;
     final bounds = _thresholdBounds(type);
     final unit = _thresholdUnit(type);
-    final changed =
-        _values.start != widget.threshold.minValue ||
-        _values.end != widget.threshold.maxValue;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -319,12 +373,51 @@ class _ThresholdEditorState extends State<_ThresholdEditor> {
         Row(
           children: [
             Expanded(
-              child: Text(
-                _thresholdLabel(type),
-                style: const TextStyle(
-                  fontWeight: FontWeight.w900,
-                  color: AppTheme.textStrong,
-                ),
+              child: Row(
+                children: [
+                  Text(
+                    _thresholdLabel(type),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w900,
+                      color: AppTheme.textStrong,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  if (_saving) ...[
+                    const SizedBox(
+                      width: 12,
+                      height: 12,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: AppTheme.primaryGreen,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    const Text(
+                      'Menyimpan...',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: AppTheme.primaryGreen,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ] else if (_saved) ...[
+                    const Icon(
+                      Icons.check_circle_rounded,
+                      size: 13,
+                      color: AppTheme.primaryGreen,
+                    ),
+                    const SizedBox(width: 3),
+                    const Text(
+                      'Tersimpan',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: AppTheme.primaryGreen,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
             Text(
@@ -347,35 +440,20 @@ class _ThresholdEditorState extends State<_ThresholdEditor> {
             _formatThreshold(_values.start),
             _formatThreshold(_values.end),
           ),
-          onChanged: _saving
-              ? null
-              : (values) => setState(() => _values = values),
-        ),
-        Align(
-          alignment: Alignment.centerRight,
-          child: FilledButton.tonalIcon(
-            onPressed: !changed || _saving
-                ? null
-                : () async {
-                    setState(() => _saving = true);
-                    await widget.onSave(
-                      SensorThreshold(
-                        sensorType: type,
-                        minValue: _values.start,
-                        maxValue: _values.end,
-                      ),
-                    );
-                    if (mounted) setState(() => _saving = false);
-                  },
-            icon: _saving
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.save_rounded, size: 18),
-            label: const Text('Simpan'),
-          ),
+          onChanged: (values) {
+            setState(() {
+              _values = values;
+              _saved = false;
+            });
+            _debounceTimer?.cancel();
+            _debounceTimer = Timer(const Duration(milliseconds: 500), () {
+              _autoSave();
+            });
+          },
+          onChangeEnd: (values) {
+            _debounceTimer?.cancel();
+            _autoSave();
+          },
         ),
       ],
     );

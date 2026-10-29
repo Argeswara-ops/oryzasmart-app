@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/config/app_config.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../shared/widgets/section_card.dart';
 import '../../data/models/vision_knowledge.dart';
@@ -542,8 +543,8 @@ class _ScanImage extends StatelessWidget {
     if (local != null && local.existsSync()) {
       return Image.file(local, width: width, height: height, fit: BoxFit.cover);
     }
-    final remote = record.remoteImageUrl;
-    if (remote != null && remote.isNotEmpty) {
+    final remote = AppConfig.resolveImageUrl(record.remoteImageUrl);
+    if (remote.isNotEmpty) {
       return Image.network(
         remote,
         width: width,

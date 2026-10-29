@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/config/app_config.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../data/models/vision_knowledge.dart';
 import '../../data/repositories/vision_history_repository.dart';
@@ -527,12 +528,32 @@ class _HistoryImage extends StatelessWidget {
         return Image.file(file, fit: BoxFit.cover);
       }
     }
-    final remoteUrl = record.remoteImageUrl;
-    if (remoteUrl != null && remoteUrl.isNotEmpty) {
+    final remoteUrl = AppConfig.resolveImageUrl(record.remoteImageUrl);
+    if (remoteUrl.isNotEmpty) {
       return Image.network(
         remoteUrl,
         fit: BoxFit.cover,
         errorBuilder: (_, _, _) => _placeholder(),
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return ColoredBox(
+            color: const Color(0xFFF1F5F9),
+            child: Center(
+              child: SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  value: loadingProgress.expectedTotalBytes != null
+                      ? loadingProgress.cumulativeBytesLoaded /
+                          loadingProgress.expectedTotalBytes!
+                      : null,
+                  color: AppTheme.primaryGreen,
+                ),
+              ),
+            ),
+          );
+        },
       );
     }
     return _placeholder();

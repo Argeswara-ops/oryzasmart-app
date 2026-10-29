@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:math' as math;
 
 import 'package:fl_chart/fl_chart.dart';
@@ -5,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/config/app_config.dart';
 import '../../core/theme/app_theme.dart';
 import '../../shared/models/nursery_models.dart';
 import '../../shared/widgets/section_card.dart';
@@ -32,43 +34,59 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     final history = ref.watch(sensorHistoryProvider(_period));
     final scans = ref.watch(visionHistoryProvider);
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-      children: [
-        _TopTabs(
-          value: _tab,
-          onChanged: (value) => setState(() => _tab = value),
-        ),
-        const SizedBox(height: 12),
-        if (_tab == 'sensor')
-          history.when(
-            data: (items) => _SensorHistory(
-              items: items,
-              metric: _metric,
-              period: _period,
-              onMetricChanged: (value) => setState(() => _metric = value),
-              onPeriodChanged: (value) => setState(() => _period = value),
-            ),
-            loading: () => const Center(
-              child: Padding(
-                padding: EdgeInsets.all(32),
-                child: CircularProgressIndicator(color: AppTheme.primaryGreen),
-              ),
-            ),
-            error: (error, stackTrace) => Text('Error: $error'),
-          )
-        else
-          scans.when(
-            data: (state) => _VisionHistory(items: state.records),
-            loading: () => const Center(
-              child: Padding(
-                padding: EdgeInsets.all(32),
-                child: CircularProgressIndicator(color: AppTheme.primaryGreen),
-              ),
-            ),
-            error: (error, stackTrace) => Text('$error'),
+    return RefreshIndicator(
+      color: AppTheme.primaryGreen,
+      onRefresh: () async {
+        if (_tab == 'sensor') {
+          ref.invalidate(sensorHistoryProvider(_period));
+        } else {
+          await ref.read(visionHistoryProvider.notifier).refresh();
+        }
+      },
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+        children: [
+          _TopTabs(
+            value: _tab,
+            onChanged: (value) => setState(() => _tab = value),
           ),
-      ],
+          const SizedBox(height: 12),
+          if (_tab == 'sensor')
+            history.when(
+              data: (items) => _SensorHistory(
+                items: items,
+                metric: _metric,
+                period: _period,
+                onMetricChanged: (value) => setState(() => _metric = value),
+                onPeriodChanged: (value) => setState(() => _period = value),
+              ),
+              loading: () => const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(32),
+                  child: CircularProgressIndicator(color: AppTheme.primaryGreen),
+                ),
+              ),
+              error: (error, stackTrace) => Padding(
+                padding: const EdgeInsets.all(24),
+                child: Center(child: Text('Gagal memuat riwayat: $error')),
+              ),
+            )
+          else
+            scans.when(
+              data: (state) => _VisionHistory(items: state.records),
+              loading: () => const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(32),
+                  child: CircularProgressIndicator(color: AppTheme.primaryGreen),
+                ),
+              ),
+              error: (error, stackTrace) => Padding(
+                padding: const EdgeInsets.all(24),
+                child: Center(child: Text('Gagal memuat riwayat: $error')),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
@@ -311,11 +329,22 @@ class _VisionHistory extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          for (final item in items)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: _VisionHistoryTile(item: item),
-            ),
+          if (items.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: Center(
+                child: Text(
+                  'Belum ada riwayat scan penyakit atau hama di database.',
+                  style: TextStyle(color: AppTheme.textMuted),
+                ),
+              ),
+            )
+          else
+            for (final item in items)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: _VisionHistoryTile(item: item),
+              ),
         ],
       ),
     );
@@ -349,19 +378,12 @@ class _VisionHistoryTile extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Container(
-              width: 46,
-              height: 42,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(
-                item.task.name == 'pest'
-                    ? Icons.bug_report_rounded
-                    : Icons.eco_rounded,
-                color: color,
-                size: 22,
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: SizedBox(
+                width: 46,
+                height: 42,
+                child: _buildThumbnail(item, color),
               ),
             ),
             const SizedBox(width: 10),
@@ -397,6 +419,38 @@ class _VisionHistoryTile extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildThumbnail(VisionScanRecord item, Color color) {
+    final local = item.localImagePath;
+    if (local != null) {
+      final file = File(local);
+      if (file.existsSync()) {
+        return Image.file(file, fit: BoxFit.cover);
+      }
+    }
+    final remote = AppConfig.resolveImageUrl(item.remoteImageUrl);
+    if (remote.isNotEmpty) {
+      return Image.network(
+        remote,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => _fallbackIcon(item, color),
+      );
+    }
+    return _fallbackIcon(item, color);
+  }
+
+  Widget _fallbackIcon(VisionScanRecord item, Color color) {
+    return Container(
+      color: color.withValues(alpha: 0.1),
+      child: Icon(
+        item.task.name == 'pest'
+            ? Icons.bug_report_rounded
+            : Icons.eco_rounded,
+        color: color,
+        size: 22,
       ),
     );
   }

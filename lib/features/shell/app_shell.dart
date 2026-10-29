@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 
 import '../../core/api/api_client.dart';
 import '../../core/api/api_providers.dart';
@@ -227,13 +228,14 @@ class _AppShellState extends ConsumerState<AppShell> {
   }
 }
 
-class _ConnectionBanner extends StatelessWidget {
+class _ConnectionBanner extends ConsumerWidget {
   const _ConnectionBanner({required this.status});
 
   final AppConnectionStatus status;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final client = ref.watch(apiClientProvider);
     final offline = status == AppConnectionStatus.offline;
     final checking = status == AppConnectionStatus.checking;
     final color = offline
@@ -241,17 +243,26 @@ class _ConnectionBanner extends StatelessWidget {
         : checking
         ? const Color(0xFF2563EB)
         : AppTheme.primaryGreen;
+
+    final nowTime = DateFormat('HH:mm:ss').format(DateTime.now());
+    final onlineTime = client.lastOnlineTime != null
+        ? DateFormat('HH:mm:ss').format(client.lastOnlineTime!)
+        : nowTime;
+    final offlineTime = client.lastOfflineTime != null
+        ? DateFormat('HH:mm:ss').format(client.lastOfflineTime!)
+        : nowTime;
+
     final message = offline
-        ? 'Anda offline · Menampilkan data terakhir yang tersinkron.'
+        ? 'ANDA OFFLINE • Terputus sejak $offlineTime WIB • Menampilkan cache data lokal'
         : checking
-        ? 'Memeriksa koneksi…'
-        : 'Anda online · Data diperbarui otomatis.';
+        ? 'MEMERIKSA KONEKSI • Menghubungkan ke backend server...'
+        : 'ANDA ONLINE • Data diperbarui pukul $onlineTime WIB • Sinkronisasi realtime aktif';
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 250),
       width: double.infinity,
       color: color.withValues(alpha: 0.10),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
       child: Row(
         children: [
           Icon(
@@ -265,17 +276,69 @@ class _ConnectionBanner extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(
-              message,
+            child: _MarqueeTicker(
+              text: message,
               style: TextStyle(
                 color: color,
                 fontSize: 11.5,
                 fontWeight: FontWeight.w800,
+                letterSpacing: 0.2,
               ),
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _MarqueeTicker extends StatefulWidget {
+  const _MarqueeTicker({required this.text, required this.style});
+  final String text;
+  final TextStyle style;
+
+  @override
+  State<_MarqueeTicker> createState() => _MarqueeTickerState();
+}
+
+class _MarqueeTickerState extends State<_MarqueeTicker>
+    with SingleTickerProviderStateMixin {
+  late final ScrollController _scrollController;
+  late final AnimationController _animController;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+    _animController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 14),
+    )..addListener(() {
+        if (_scrollController.hasClients) {
+          final maxScroll = _scrollController.position.maxScrollExtent;
+          if (maxScroll > 0) {
+            _scrollController.jumpTo(_animController.value * maxScroll);
+          }
+        }
+      });
+    _animController.repeat();
+  }
+
+  @override
+  void dispose() {
+    _animController.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final display = '${widget.text}       ★       ${widget.text}       ★       ';
+    return SingleChildScrollView(
+      controller: _scrollController,
+      scrollDirection: Axis.horizontal,
+      physics: const NeverScrollableScrollPhysics(),
+      child: Text(display, style: widget.style),
     );
   }
 }

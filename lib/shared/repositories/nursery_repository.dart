@@ -395,7 +395,7 @@ class NurseryRepository {
           .map(Recommendation.fromJson)
           .toList();
     } on DioException {
-      return [_mockDashboard().recommendation];
+      return const [];
     }
   }
 
@@ -406,7 +406,11 @@ class NurseryRepository {
       );
       return Recommendation.fromJson(_client.dataEnvelope(response));
     } on DioException {
-      return _mockDashboard().recommendation;
+      return const Recommendation(
+        status: 'NORMAL',
+        cause: 'Koneksi data rekomendasi belum terhubung.',
+        message: 'Lanjutkan pemantauan berkala.',
+      );
     }
   }
 
@@ -421,12 +425,12 @@ class NurseryRepository {
     } on DioException catch (error) {
       if (error.response == null) {
         throw const ApiException(
-          'Kontrol kipas tidak tersedia saat offline. Data terakhir tetap ditampilkan.',
+          'Kontrol pompa air tidak tersedia saat offline. Data terakhir tetap ditampilkan.',
         );
       }
       throw ApiException(
         _messageFromResponse(error.response?.data) ??
-            'Status kipas tidak dapat dibaca dari API.',
+            'Status pompa air tidak dapat dibaca dari API.',
       );
     }
   }
@@ -514,12 +518,12 @@ class NurseryRepository {
     } on DioException catch (error) {
       if (error.response == null) {
         throw const ApiException(
-          'Kontrol kipas tidak tersedia saat offline. Data terakhir tetap ditampilkan.',
+          'Kontrol pompa air tidak tersedia saat offline. Data terakhir tetap ditampilkan.',
         );
       }
       throw ApiException(
         _messageFromResponse(error.response?.data) ??
-            'Perintah kipas ditolak oleh API.',
+            'Perintah pompa air ditolak oleh API.',
       );
     }
     return _fan;
@@ -595,41 +599,6 @@ class NurseryRepository {
     return int.tryParse('$value') ?? 0;
   }
 
-  DashboardSnapshot _mockDashboard() {
-    final now = DateTime.now();
-    const alerts = <SystemAlert>[];
-    return DashboardSnapshot(
-      device: DeviceStatus(
-        code: 'ESP32-01',
-        name: 'Nursery Controller',
-        status: 'ONLINE',
-        lastSeen: now.subtract(const Duration(seconds: 18)),
-      ),
-      sensor: SensorReading(
-        deviceId: 'ESP32-01',
-        temperature: 29.4,
-        humidity: 81,
-        nitrogen: 40,
-        phosphorus: 22,
-        potassium: 31,
-        light: 65,
-        lightPercent: 65,
-        uvIndex: 3.2,
-        ultrasonic: 14,
-        waterLevelPercent: 64,
-        createdAt: now,
-      ),
-      fan: _fan,
-      alerts: alerts,
-      recommendation: const Recommendation(
-        status: 'PERLU PERHATIAN',
-        cause: 'Satu atau lebih sensor berada di luar ambang normal.',
-        message: 'Periksa nilai sensor dan kondisi perangkat lapangan.',
-      ),
-      systemStatus: 'WARNING',
-      unreadAlerts: alerts.where((alert) => !alert.isRead).length,
-    );
-  }
 }
 
 class LoginException implements Exception {

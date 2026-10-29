@@ -67,34 +67,11 @@ class _DashboardContent extends ConsumerWidget {
         _DashboardSection(
           title: 'Sensor Realtime',
           subtitle: 'Data terakhir ESP32',
-          trailing: IconButton(
-            constraints: const BoxConstraints.tightFor(width: 40, height: 40),
-            padding: EdgeInsets.zero,
-            style: IconButton.styleFrom(
-              backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.1),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-                side: BorderSide(
-                  color: AppTheme.primaryGreen.withValues(alpha: 0.2),
-                ),
-              ),
-            ),
-            tooltip: 'Refresh',
-            onPressed: () async {
-              final refreshed = ref.refresh(dashboardProvider.future);
-              await refreshed;
-            },
-            icon: const Icon(
-              Icons.refresh_rounded,
-              color: AppTheme.primaryGreen,
-              size: 20,
-            ),
-          ),
           child: _SensorGrid(sensor: snapshot.sensor),
         ),
         const SizedBox(height: 12),
         _DashboardSection(
-          title: 'Kontrol Kipas',
+          title: 'Kontrol Pompa Air',
           subtitle: 'Status aktuator dari API',
           child: _FanControl(
             fan: snapshot.fan,
@@ -253,7 +230,7 @@ class _ConditionBanner extends StatelessWidget {
               Expanded(
                 child: _BannerMetric(
                   label: 'Kelembapan',
-                  value: '${snapshot.sensor.humidity.toStringAsFixed(0)}%',
+                  value: _sensorValue(snapshot.sensor.humidity, suffix: '%'),
                 ),
               ),
               const SizedBox(width: 8),
@@ -278,22 +255,29 @@ class _SensorGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final temp = sensor.temperature;
+    final hum = sensor.humidity;
+
     final items = [
       _SensorItem(
         icon: Icons.thermostat_rounded,
         label: 'Suhu',
-        value: '${sensor.temperature.toStringAsFixed(1)} C',
-        status: sensor.temperature >= 32 ? 'WASPADA' : 'NORMAL',
-        accentColor: sensor.temperature >= 32
+        value: _sensorValue(temp, suffix: ' C', decimals: 1),
+        status: temp == null
+            ? 'BELUM TERSEDIA'
+            : (temp >= 32 ? 'WASPADA' : 'NORMAL'),
+        accentColor: (temp != null && temp >= 32)
             ? AppTheme.warning
-            : AppTheme.critical,
+            : AppTheme.primaryGreen,
       ),
       _SensorItem(
         icon: Icons.water_drop_rounded,
         label: 'Kelembapan',
-        value: '${sensor.humidity.toStringAsFixed(0)}%',
-        status: sensor.humidity >= 80 ? 'TINGGI' : 'NORMAL',
-        accentColor: sensor.humidity >= 80
+        value: _sensorValue(hum, suffix: '%'),
+        status: hum == null
+            ? 'BELUM TERSEDIA'
+            : (hum >= 80 ? 'TINGGI' : 'NORMAL'),
+        accentColor: (hum != null && hum >= 80)
             ? AppTheme.warning
             : AppTheme.infoBlue,
       ),
@@ -439,7 +423,7 @@ class _FanControl extends ConsumerWidget {
       if (next != null && previous != next) {
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(SnackBar(content: Text('Kontrol kipas gagal: $next')));
+        ).showSnackBar(SnackBar(content: Text('Kontrol pompa air gagal: $next')));
       }
     });
     final fanAsync = ref.watch(fanControllerProvider);
@@ -464,7 +448,7 @@ class _FanControl extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(
-                  Icons.air_rounded,
+                  Icons.water_drop_rounded,
                   color: isFanOn ? AppTheme.primaryGreen : AppTheme.textMuted,
                   size: 22,
                 ),
@@ -475,7 +459,7 @@ class _FanControl extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Kipas ventilasi',
+                      'Pompa air',
                       style: TextStyle(
                         fontSize: 14.5,
                         fontWeight: FontWeight.w900,
@@ -555,7 +539,7 @@ class _FanControl extends ConsumerWidget {
                 children: [
                   const Expanded(
                     child: Text(
-                      'Saklar daya kipas',
+                      'Saklar daya pompa air',
                       style: TextStyle(
                         fontWeight: FontWeight.w800,
                         color: Color(0xFF334155),

@@ -38,8 +38,8 @@ class DashboardSnapshot {
         fallbackCode: 'ESP32-01',
         fallbackName: 'Nursery Controller',
       ),
-      sensor: SensorReading.fromJson(_map(json['sensor'])),
-      fan: FanState.fromJson(_map(json['fan'])),
+      sensor: SensorReading.fromJson(_map(json['sensor'] ?? json['sensors'] ?? json['latest_sensor'])),
+      fan: FanState.fromJson(_map(json['fan'] ?? json['pump'])),
       alerts: alerts,
       recommendation: Recommendation.fromJson(_map(json['recommendation'])),
       systemStatus: '${json['system_status'] ?? 'UNKNOWN'}',
@@ -53,8 +53,8 @@ class DashboardSnapshot {
 class SensorReading {
   const SensorReading({
     required this.deviceId,
-    required this.temperature,
-    required this.humidity,
+    this.temperature,
+    this.humidity,
     this.nitrogen,
     this.phosphorus,
     this.potassium,
@@ -71,8 +71,8 @@ class SensorReading {
   });
 
   final String deviceId;
-  final double temperature;
-  final double humidity;
+  final double? temperature;
+  final double? humidity;
   final double? nitrogen;
   final double? phosphorus;
   final double? potassium;
@@ -93,8 +93,8 @@ class SensorReading {
     final water = json['water_level'];
     return SensorReading(
       deviceId: '${json['device_id'] ?? json['device_code'] ?? 'ESP32-01'}',
-      temperature: _toDouble(json['temperature']),
-      humidity: _toDouble(json['humidity']),
+      temperature: _toNullableDouble(json['temperature']),
+      humidity: _toNullableDouble(json['humidity']),
       nitrogen: _toNullableDouble(json['nitrogen']),
       phosphorus: _toNullableDouble(json['phosphorus']),
       potassium: _toNullableDouble(json['potassium']),
@@ -178,6 +178,7 @@ class DeviceStatus {
     this.location = '',
     bool? isOnline,
     this.fan,
+    this.mist,
     this.latestSensor,
   }) : isOnline = isOnline ?? status == 'ONLINE';
 
@@ -188,6 +189,7 @@ class DeviceStatus {
   final String location;
   final bool isOnline;
   final FanState? fan;
+  final Map<String, dynamic>? mist;
   final SensorReading? latestSensor;
 
   factory DeviceStatus.fromJson(
@@ -212,6 +214,11 @@ class DeviceStatus {
           : status == 'ONLINE',
       fan: json['fan'] is Map<String, dynamic>
           ? FanState.fromJson(json['fan'] as Map<String, dynamic>)
+          : (json['pump'] is Map<String, dynamic>
+              ? FanState.fromJson(json['pump'] as Map<String, dynamic>)
+              : null),
+      mist: json['mist'] is Map<String, dynamic>
+          ? json['mist'] as Map<String, dynamic>
           : null,
       latestSensor: json['latest_sensor'] is Map<String, dynamic>
           ? SensorReading.fromJson(
@@ -229,6 +236,7 @@ class DeviceStatus {
     'location': location,
     'is_online': isOnline,
     'fan': fan?.toJson(),
+    'mist': mist,
     'latest_sensor': latestSensor?.toJson(),
   };
 }
@@ -262,28 +270,33 @@ class FanState {
   }
 
   factory FanState.fromJson(Map<String, dynamic> json) {
-    final nested = json['fan'] ?? json['actuator'];
-    if (nested is Map<String, dynamic>) {
-      return FanState.fromJson(nested);
-    }
-    final status = _normalizeStatus(json['status'] ?? 'OFF');
+    final payload = json['actuator'] is Map<String, dynamic>
+        ? json['actuator'] as Map<String, dynamic>
+        : (json['fan'] is Map<String, dynamic>
+            ? json['fan'] as Map<String, dynamic>
+            : (json['pump'] is Map<String, dynamic>
+                ? json['pump'] as Map<String, dynamic>
+                : json));
+    final status = _normalizeStatus(payload['status'] ?? 'OFF');
     return FanState(
       status: status,
-      mode: _normalizeStatus(json['mode'] ?? 'MANUAL'),
-      isOn: json['is_on'] is bool ? json['is_on'] as bool : status == 'ON',
-      deviceOnline: json['device_online'] is bool
-          ? json['device_online'] as bool
-          : true,
+      mode: _normalizeStatus(payload['mode'] ?? 'AUTO'),
+      isOn: payload['is_on'] is bool
+          ? payload['is_on'] as bool
+          : status == 'ON',
+      deviceOnline:
+          (payload['device_online'] ?? json['device_online']) as bool? ?? true,
     );
   }
 
   Map<String, dynamic> toJson() => {
     'status': status,
-    'is_on': isOn,
     'mode': mode,
+    'is_on': isOn,
     'device_online': deviceOnline,
   };
 }
+
 
 class SensorThreshold {
   const SensorThreshold({
@@ -298,7 +311,7 @@ class SensorThreshold {
 
   factory SensorThreshold.fromJson(Map<String, dynamic> json) {
     return SensorThreshold(
-      sensorType: '${json['sensor_type'] ?? ''}'.toLowerCase(),
+      sensorType: '${json['sensor_type'] ?? ''}',
       minValue: _toDouble(json['min_value']),
       maxValue: _toDouble(json['max_value']),
     );
@@ -314,6 +327,7 @@ class SensorThreshold {
 class SystemAlert {
   const SystemAlert({
     this.id,
+    this.deviceCode,
     required this.level,
     required this.title,
     required this.message,
@@ -322,6 +336,7 @@ class SystemAlert {
   });
 
   final int? id;
+  final String? deviceCode;
   final String level;
   final String title;
   final String message;
@@ -331,6 +346,7 @@ class SystemAlert {
   SystemAlert copyWith({bool? isRead}) {
     return SystemAlert(
       id: id,
+      deviceCode: deviceCode,
       level: level,
       title: title,
       message: message,
@@ -340,20 +356,29 @@ class SystemAlert {
   }
 
   factory SystemAlert.fromJson(Map<String, dynamic> json) {
+    final dev = json['device'];
+    final devCode = dev is Map<String, dynamic>
+        ? dev['device_code']?.toString()
+        : (json['device_code']?.toString() ??
+            (json['device_id'] != null ? 'ESP32-${json['device_id']}' : null));
     return SystemAlert(
       id: _toNullableInt(json['id']),
+      deviceCode: devCode,
       level: _normalizeStatus(json['level'] ?? json['severity'] ?? 'WARNING'),
       title: '${json['title'] ?? 'Alert'}',
       message: '${json['message'] ?? ''}',
       createdAt:
           _toDateTime(json['created_at'] ?? json['detected_at']) ??
           DateTime.now(),
-      isRead: json['is_read'] == true || json['read_at'] != null,
+      isRead: json['is_read'] == true ||
+          json['read_at'] != null ||
+          json['status'] == 'READ',
     );
   }
 
   Map<String, dynamic> toJson() => {
     'id': id,
+    'device_code': deviceCode,
     'level': level,
     'title': title,
     'message': message,

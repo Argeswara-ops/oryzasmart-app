@@ -162,12 +162,32 @@ class VisionHistoryController extends AsyncNotifier<VisionHistoryState> {
       try {
         final remote = await _repository.fetchRemote();
         if (!ref.mounted) return;
-        final byId = <String, VisionScanRecord>{
-          for (final record in remote) record.localId: record,
-          for (final record in state.requireValue.records)
-            record.localId: record,
-          for (final record in updated) record.localId: record,
-        };
+        final byId = <String, VisionScanRecord>{};
+        for (final record in remote) {
+          byId[record.localId] = record;
+        }
+        for (final record in state.requireValue.records) {
+          final existing = byId[record.localId];
+          if (existing != null) {
+            byId[record.localId] = record.copyWith(
+              remoteId: record.remoteId ?? existing.remoteId,
+              remoteImageUrl: existing.remoteImageUrl ?? record.remoteImageUrl,
+            );
+          } else {
+            byId[record.localId] = record;
+          }
+        }
+        for (final record in updated) {
+          final existing = byId[record.localId];
+          if (existing != null) {
+            byId[record.localId] = record.copyWith(
+              remoteId: record.remoteId ?? existing.remoteId,
+              remoteImageUrl: record.remoteImageUrl ?? existing.remoteImageUrl,
+            );
+          } else {
+            byId[record.localId] = record;
+          }
+        }
         merged = byId.values.toList()
           ..sort((a, b) => b.scannedAt.compareTo(a.scannedAt));
       } catch (_) {

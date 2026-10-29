@@ -16,72 +16,113 @@ class DevicesScreen extends ConsumerWidget {
     final dashboard = ref.watch(dashboardProvider);
     final devices = ref.watch(devicesProvider);
 
-    return devices.when(
-      data: (deviceItems) => dashboard.when(
-        data: (snapshot) => ListView(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
-          children: [
-            _FleetSummary(devices: deviceItems, fan: snapshot.fan),
-            const SizedBox(height: 12),
-            if (deviceItems.isEmpty)
-              const SectionCard(
-                child: Text(
-                  'Belum ada ESP32 yang terdaftar pada API.',
-                  style: TextStyle(color: AppTheme.textMuted),
+    return RefreshIndicator(
+      color: AppTheme.primaryGreen,
+      onRefresh: () async {
+        final refreshedDevices = ref.refresh(devicesProvider.future);
+        final refreshedDashboard = ref.refresh(dashboardProvider.future);
+        await Future.wait([refreshedDevices, refreshedDashboard]);
+      },
+      child: devices.when(
+        data: (deviceItems) => dashboard.when(
+          data: (snapshot) {
+            final anyOnline = deviceItems.any((device) => device.isOnline);
+            return ListView(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+              children: [
+                _FleetSummary(devices: deviceItems, fan: snapshot.fan),
+                const SizedBox(height: 12),
+                const Padding(
+                  padding: EdgeInsets.only(left: 4, bottom: 8),
+                  child: Text(
+                    'Node Sensor & Pengendali (ESP32)',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: AppTheme.textMuted,
+                    ),
+                  ),
                 ),
-              )
-            else
-              for (final device in deviceItems) ...[
-                _DeviceCard(
-                  icon: Icons.developer_board_rounded,
-                  iconColor: AppTheme.primaryGreen,
-                  title: device.name,
-                  code: device.code,
-                  status: device.status,
-                  isOnline: device.isOnline,
-                  lastSeen: device.lastSeen,
-                  details: [
-                    _DeviceDetail(
-                      icon: Icons.location_on_outlined,
-                      label: 'Lokasi',
-                      value: device.location.isEmpty
-                          ? 'Belum diatur'
-                          : device.location,
+                if (deviceItems.isEmpty)
+                  const SectionCard(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8),
+                      child: Text(
+                        'Belum ada perangkat ESP32 yang terdaftar di database.',
+                        style: TextStyle(color: AppTheme.textMuted),
+                      ),
                     ),
-                    _DeviceDetail(
-                      icon: Icons.sensors_rounded,
-                      label: 'Sensor terbaru',
-                      value: device.latestSensor == null
-                          ? 'Belum ada data'
-                          : '${device.latestSensor!.temperature.toStringAsFixed(1)}°C · Kelembapan ${device.latestSensor!.humidity.toStringAsFixed(0)}%',
+                  )
+                else
+                  for (final device in deviceItems) ...[
+                    _DeviceCard(
+                      icon: Icons.developer_board_rounded,
+                      iconColor: AppTheme.primaryGreen,
+                      title: device.name,
+                      code: device.code,
+                      status: device.status,
+                      isOnline: device.isOnline,
+                      lastSeen: device.lastSeen,
+                      details: [
+                        _DeviceDetail(
+                          icon: Icons.location_on_outlined,
+                          label: 'Lokasi',
+                          value: device.location.isEmpty
+                              ? 'Belum diatur'
+                              : device.location,
+                        ),
+                        _DeviceDetail(
+                          icon: Icons.sensors_rounded,
+                          label: 'Sensor terbaru',
+                          value: device.latestSensor == null
+                              ? 'Belum ada data'
+                              : '${device.latestSensor!.temperature != null ? '${device.latestSensor!.temperature!.toStringAsFixed(1)}°C' : '-'} · Kelembapan ${device.latestSensor!.humidity != null ? '${device.latestSensor!.humidity!.toStringAsFixed(0)}%' : '-'}',
+                        ),
+                      ],
                     ),
+                    const SizedBox(height: 10),
                   ],
+                const SizedBox(height: 6),
+                const Padding(
+                  padding: EdgeInsets.only(left: 4, bottom: 8),
+                  child: Text(
+                    'Aktuator Nursery (Output Lapangan)',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                      color: AppTheme.textMuted,
+                    ),
+                  ),
+                ),
+                _PumpDeviceCard(
+                  fan: snapshot.fan,
+                  deviceOnline: anyOnline,
                 ),
                 const SizedBox(height: 10),
+                _MistDeviceCard(
+                  deviceOnline: anyOnline,
+                ),
               ],
-            _FanDeviceCard(
-              fan: snapshot.fan,
-              deviceOnline: deviceItems.any((device) => device.isOnline),
+            );
+          },
+          loading: () => const Center(
+            child: CircularProgressIndicator(color: AppTheme.primaryGreen),
+          ),
+          error: (error, stackTrace) => Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Text('Status aktuator belum tersedia: $error'),
             ),
-          ],
+          ),
         ),
         loading: () => const Center(
           child: CircularProgressIndicator(color: AppTheme.primaryGreen),
         ),
-        error: (error, stackTrace) => const Center(
+        error: (error, stackTrace) => Center(
           child: Padding(
-            padding: EdgeInsets.all(24),
-            child: Text('Status kipas belum tersedia.'),
+            padding: const EdgeInsets.all(24),
+            child: Text('Data perangkat belum tersedia dari API: $error'),
           ),
-        ),
-      ),
-      loading: () => const Center(
-        child: CircularProgressIndicator(color: AppTheme.primaryGreen),
-      ),
-      error: (error, stackTrace) => const Center(
-        child: Padding(
-          padding: EdgeInsets.all(24),
-          child: Text('Data perangkat belum tersedia dari API.'),
         ),
       ),
     );
@@ -128,7 +169,7 @@ class _FleetSummary extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  '$onlineCount dari ${devices.length} ESP32 online · Kipas ${fan.status}',
+                  '$onlineCount dari ${devices.length} ESP32 online · Pompa air ${fan.status}',
                   style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -248,8 +289,8 @@ class _DeviceCard extends StatelessWidget {
   }
 }
 
-class _FanDeviceCard extends ConsumerWidget {
-  const _FanDeviceCard({required this.fan, required this.deviceOnline});
+class _PumpDeviceCard extends ConsumerWidget {
+  const _PumpDeviceCard({required this.fan, required this.deviceOnline});
 
   final FanState fan;
   final bool deviceOnline;
@@ -258,9 +299,9 @@ class _FanDeviceCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     ref.listen(fanControlErrorProvider, (previous, next) {
       if (next != null && previous != next) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Kontrol kipas gagal: $next')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Kontrol pompa air gagal: $next')),
+        );
       }
     });
     final fanAsync = ref.watch(fanControllerProvider);
@@ -279,7 +320,7 @@ class _FanDeviceCard extends ConsumerWidget {
               color: color.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(Icons.air_rounded, color: color, size: 24),
+            child: Icon(Icons.water_drop_rounded, color: color, size: 24),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -287,7 +328,7 @@ class _FanDeviceCard extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Kipas ventilasi',
+                  'Pompa air',
                   style: TextStyle(
                     fontSize: 15.5,
                     fontWeight: FontWeight.w900,
@@ -295,7 +336,7 @@ class _FanDeviceCard extends ConsumerWidget {
                   ),
                 ),
                 Text(
-                  'Mode ${fanState.mode}',
+                  'Mode ${fanState.mode} · Status ${fanState.status}',
                   style: const TextStyle(
                     fontSize: 12,
                     color: AppTheme.textMuted,
@@ -333,6 +374,63 @@ class _FanDeviceCard extends ConsumerWidget {
   }
 }
 
+class _MistDeviceCard extends StatelessWidget {
+  const _MistDeviceCard({required this.deviceOnline});
+
+  final bool deviceOnline;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = deviceOnline ? AppTheme.teal : AppTheme.textMuted;
+
+    return SectionCard(
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(9),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(Icons.grain_rounded, color: color, size: 24),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Kabut air (Misting)',
+                  style: TextStyle(
+                    fontSize: 15.5,
+                    fontWeight: FontWeight.w900,
+                    color: AppTheme.textStrong,
+                  ),
+                ),
+                Text(
+                  deviceOnline
+                      ? 'Mode AUTO · Mengatur kelembapan'
+                      : 'Perangkat standby / offline',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppTheme.textMuted,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          StatusChip(
+            label: deviceOnline ? 'STANDBY' : 'OFFLINE',
+            color: deviceOnline ? AppTheme.teal : AppTheme.textMuted,
+            isPulse: deviceOnline,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _LastSeenStrip extends StatelessWidget {
   const _LastSeenStrip({
     required this.lastSeen,
@@ -350,33 +448,26 @@ class _LastSeenStrip extends StatelessWidget {
         ? AppTheme.critical
         : isStale
         ? AppTheme.warning
-        : AppTheme.primaryGreen;
+        : AppTheme.textMuted;
+    final text = isOffline
+        ? 'Offline sejak ${DateFormat('dd MMM HH:mm').format(lastSeen)}'
+        : isStale
+        ? 'Data tertahan ${DateFormat('HH:mm').format(lastSeen)}'
+        : 'Update ${DateFormat('HH:mm:ss').format(lastSeen)}';
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withValues(alpha: 0.18)),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.access_time_rounded, size: 16, color: color),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              'Terakhir terlihat ${DateFormat.Hms().format(lastSeen)}',
-              style: TextStyle(
-                fontSize: 12,
-                color: color,
-                fontWeight: FontWeight.w800,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
+    return Row(
+      children: [
+        Icon(Icons.schedule_rounded, size: 14, color: color),
+        const SizedBox(width: 6),
+        Text(
+          text,
+          style: TextStyle(
+            fontSize: 11,
+            color: color,
+            fontWeight: FontWeight.w600,
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -388,31 +479,26 @@ class _InfoTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(detail.icon, size: 16, color: AppTheme.textMuted),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                detail.label,
-                style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              Text(
-                detail.value,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                  color: AppTheme.textStrong,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
+        Row(
+          children: [
+            Icon(detail.icon, size: 14, color: AppTheme.textMuted),
+            const SizedBox(width: 4),
+            Text(
+              detail.label,
+              style: const TextStyle(fontSize: 11, color: AppTheme.textMuted),
+            ),
+          ],
+        ),
+        const SizedBox(height: 3),
+        Text(
+          detail.value,
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w800,
+            color: AppTheme.textStrong,
           ),
         ),
       ],

@@ -12,15 +12,18 @@ class ApiClient {
     _dio.interceptors.add(
       InterceptorsWrapper(
         onResponse: (response, handler) {
+          _lastOnlineTime = DateTime.now();
           _setConnectionStatus(AppConnectionStatus.online);
           handler.next(response);
         },
         onError: (error, handler) {
-          _setConnectionStatus(
-            error.response == null
-                ? AppConnectionStatus.offline
-                : AppConnectionStatus.online,
-          );
+          if (error.response == null) {
+            _lastOfflineTime ??= DateTime.now();
+            _setConnectionStatus(AppConnectionStatus.offline);
+          } else {
+            _lastOnlineTime = DateTime.now();
+            _setConnectionStatus(AppConnectionStatus.online);
+          }
           handler.next(error);
         },
       ),
@@ -49,15 +52,25 @@ class ApiClient {
       StreamController<AppConnectionStatus>.broadcast();
   String? _token;
   AppConnectionStatus _connectionStatus = AppConnectionStatus.checking;
+  DateTime? _lastOnlineTime = DateTime.now();
+  DateTime? _lastOfflineTime;
 
   Dio get dio => _dio;
 
   String? get token => _token;
   AppConnectionStatus get connectionStatus => _connectionStatus;
+  DateTime? get lastOnlineTime => _lastOnlineTime;
+  DateTime? get lastOfflineTime => _lastOfflineTime;
   Stream<AppConnectionStatus> get connectionChanges =>
       _connectionController.stream;
 
   void _setConnectionStatus(AppConnectionStatus status) {
+    if (status == AppConnectionStatus.online) {
+      _lastOnlineTime = DateTime.now();
+      _lastOfflineTime = null;
+    } else if (status == AppConnectionStatus.offline) {
+      _lastOfflineTime ??= DateTime.now();
+    }
     if (_connectionStatus == status) return;
     _connectionStatus = status;
     _connectionController.add(status);
@@ -82,24 +95,19 @@ class ApiClient {
 
   List<dynamic> listEnvelope(Response<dynamic> response) {
     final body = response.data;
-    if (body is List) return body;
     if (body is Map<String, dynamic>) {
       _throwWhenUnsuccessful(body);
-      final data = body['data'];
-      if (data is List) return data;
-      if (data is Map<String, dynamic>) {
-        for (final key in ['items', 'data', 'series', 'alerts']) {
-          final value = data[key];
-          if (value is List) return value;
-        }
-      }
+      final payload = body['data'];
+      if (payload is List) return payload;
     }
+    if (body is List) return body;
     return const [];
   }
 
   void _throwWhenUnsuccessful(Map<String, dynamic> body) {
     if (body['success'] == false) {
-      throw ApiException('${body['message'] ?? 'Request API gagal.'}');
+      final message = body['message'] ?? 'Permintaan API gagal.';
+      throw ApiException(message.toString());
     }
   }
 }
