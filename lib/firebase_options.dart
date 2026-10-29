@@ -1,4 +1,4 @@
-// File generated based on google-services.json for oryzasmart-f2ad2
+// File generated based on google-services.json for oryzasmart-bb623
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
@@ -41,10 +41,10 @@ class DefaultFirebaseOptions {
     }
   }
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyAnGhyAKajkdcTEYPMQKKW4JjmskA9uwjg',
-    appId: '1:270720028370:android:67b68f948831765aa5270b',
-    messagingSenderId: '270720028370',
-    projectId: 'oryzasmart-f2ad2',
-    storageBucket: 'oryzasmart-f2ad2.firebasestorage.app',
+    apiKey: 'AIzaSyAul1_JWXetIxkkD4KdJVSj52-Xk7M7AM4',
+    appId: '1:53240763164:android:e00f8e53330cf5306120d9',
+    messagingSenderId: '53240763164',
+    projectId: 'oryzasmart-bb623',
+    storageBucket: 'oryzasmart-bb623.firebasestorage.app',
   );
 }
