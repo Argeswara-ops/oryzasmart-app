@@ -7,10 +7,15 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/api/api_client.dart';
 import '../../core/config/app_config.dart';
+import '../../core/services/notification_service.dart';
 import '../models/nursery_models.dart';
 
 class NurseryRepository {
-  NurseryRepository(this._client);
+  NurseryRepository(this._client) {
+    NotificationService.instance.onTokenRefresh = (token) {
+      syncFcmToken(token);
+    };
+  }
 
   static const _tokenKey = 'oryza_auth_token';
   static const _userIdKey = 'oryza_auth_user_id';
@@ -58,6 +63,10 @@ class NurseryRepository {
           ? AuthUser.fromJson(data['user'] as Map<String, dynamic>)
           : AuthUser.fallback(email);
       await _saveSession(token: token, user: user);
+      final fcmToken = NotificationService.instance.fcmToken;
+      if (fcmToken != null && fcmToken.isNotEmpty) {
+        syncFcmToken(fcmToken);
+      }
       return user;
     } on DioException catch (error) {
       throw LoginException.fromDio(error);
@@ -67,6 +76,7 @@ class NurseryRepository {
   }
 
   Future<void> logout() async {
+    await removeFcmToken();
     try {
       await _client.dio.post<Map<String, dynamic>>('/logout');
     } on DioException {
@@ -92,6 +102,10 @@ class NurseryRepository {
         await prefs.remove(_tokenKey);
       }
       _client.setToken(token);
+      final fcmToken = NotificationService.instance.fcmToken;
+      if (fcmToken != null && fcmToken.isNotEmpty) {
+        syncFcmToken(fcmToken);
+      }
       return AuthUser(
         id: prefs.getInt(_userIdKey) ?? 0,
         name: prefs.getString(_userNameKey) ?? 'Operator Pembibitan',
@@ -101,6 +115,22 @@ class NurseryRepository {
     } catch (_) {
       return null;
     }
+  }
+
+  Future<void> syncFcmToken(String? fcmToken) async {
+    if (fcmToken == null || fcmToken.isEmpty) return;
+    try {
+      await _client.dio.post<Map<String, dynamic>>(
+        '/user/fcm-token',
+        data: {'fcm_token': fcmToken},
+      );
+    } catch (_) {}
+  }
+
+  Future<void> removeFcmToken() async {
+    try {
+      await _client.dio.delete<Map<String, dynamic>>('/user/fcm-token');
+    } catch (_) {}
   }
 
   Future<DashboardSnapshot> getDashboard() async {

@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 
+import 'firebase_options.dart';
+import 'core/services/notification_service.dart';
 import 'core/api/api_providers.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/login_screen.dart';
@@ -13,6 +17,17 @@ import 'shared/repositories/nursery_repository.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(isOptional: true);
+
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+    await NotificationService.instance.initialize();
+  } catch (e, st) {
+    debugPrint('Firebase initialization warning: $e\n$st');
+  }
+
   runApp(const ProviderScope(child: SmartRiceNurseryApp()));
 }
 
