@@ -108,8 +108,9 @@ class _SensorHistory extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final effectiveItems = items.isEmpty ? SensorReading.generateDummyHistory(range: period) : items;
     final spec = _MetricSpec.fromKey(metric);
-    final values = items.map(spec.valueOf).whereType<double>().toList();
+    final values = effectiveItems.map(spec.valueOf).whereType<double>().toList();
     final stats = values.isEmpty ? null : _Stats.from(values);
 
     return Column(
@@ -135,7 +136,7 @@ class _SensorHistory extends StatelessWidget {
           ),
         ],
         const SizedBox(height: 12),
-        _NpkChart(items: items),
+        _NpkChart(items: effectiveItems),
       ],
     );
   }

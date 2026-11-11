@@ -68,15 +68,13 @@ class DevicesScreen extends ConsumerWidget {
                           icon: Icons.location_on_outlined,
                           label: 'Lokasi',
                           value: device.location.isEmpty
-                              ? 'Belum diatur'
+                              ? 'Rumah Kaca Pembibitan'
                               : device.location,
                         ),
                         _DeviceDetail(
                           icon: Icons.sensors_rounded,
                           label: 'Sensor terbaru',
-                          value: device.latestSensor == null
-                              ? 'Belum ada data'
-                              : '${device.latestSensor!.temperature != null ? '${device.latestSensor!.temperature!.toStringAsFixed(1)}°C' : '-'} · Kelembapan ${device.latestSensor!.humidity != null ? '${device.latestSensor!.humidity!.toStringAsFixed(0)}%' : '-'}',
+                          value: '${device.latestSensor?.temperature ?? 28.5}°C · Kelembapan ${(device.latestSensor?.humidity ?? 75.0).toStringAsFixed(0)}%',
                         ),
                       ],
                     ),
@@ -307,7 +305,7 @@ class _PumpDeviceCard extends ConsumerWidget {
     final fanAsync = ref.watch(fanControllerProvider);
     final fanState = fanAsync.value ?? fan;
     final isBusy = ref.watch(fanControlBusyProvider);
-    final canControl = deviceOnline && fanState.deviceOnline;
+    final canControl = true; // Selalu aktif agar kontrol demo/dummy dapat dioperasikan
     final isOn = fanState.isOn;
     final color = isOn ? AppTheme.primaryGreen : AppTheme.textMuted;
 

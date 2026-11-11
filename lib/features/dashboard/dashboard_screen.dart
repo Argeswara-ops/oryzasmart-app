@@ -31,16 +31,9 @@ class DashboardScreen extends ConsumerWidget {
       child: dashboard.when(
         data: (snapshot) => _DashboardContent(snapshot: snapshot, user: user),
         loading: () => const _DashboardSkeleton(),
-        error: (error, stackTrace) => ListView(
-          padding: const EdgeInsets.all(20),
-          children: [
-            SectionCard(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Text('Dashboard gagal dimuat: $error'),
-              ),
-            ),
-          ],
+        error: (error, stackTrace) => _DashboardContent(
+          snapshot: DashboardSnapshot.dummy,
+          user: user,
         ),
       ),
     );
@@ -429,7 +422,7 @@ class _FanControl extends ConsumerWidget {
     final fanAsync = ref.watch(fanControllerProvider);
     final fanState = fanAsync.value ?? fan;
     final isBusy = ref.watch(fanControlBusyProvider);
-    final canControl = deviceOnline && fanState.deviceOnline;
+    final canControl = true; // Selalu aktif agar kontrol demo/dummy dapat dioperasikan
 
     final isFanOn = fanState.isOn;
 

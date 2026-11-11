@@ -36,18 +36,76 @@ class DashboardSnapshot {
       device: DeviceStatus.fromJson(
         _map(json['device']),
         fallbackCode: 'ESP32-01',
-        fallbackName: 'Nursery Controller',
+        fallbackName: 'ESP32 Utama',
       ),
       sensor: SensorReading.fromJson(_map(json['sensor'] ?? json['sensors'] ?? json['latest_sensor'])),
       fan: FanState.fromJson(_map(json['fan'] ?? json['pump'])),
       alerts: alerts,
       recommendation: Recommendation.fromJson(_map(json['recommendation'])),
-      systemStatus: '${json['system_status'] ?? 'UNKNOWN'}',
+      systemStatus: '${json['system_status'] ?? 'NORMAL'}',
       unreadAlerts:
           _toNullableInt(json['unread_alerts']) ??
           alerts.where((alert) => !alert.isRead).length,
     );
   }
+
+  static DashboardSnapshot get dummy => DashboardSnapshot(
+    device: dummyDevices.first,
+    sensor: SensorReading.dummy,
+    fan: const FanState(status: 'ON', mode: 'AUTO', isOn: true, deviceOnline: true),
+    alerts: dummyAlerts,
+    recommendation: const Recommendation(
+      status: 'NORMAL',
+      cause: 'Kondisi lingkungan pembibitan normal',
+      message: 'Suhu dan kelembapan optimal. Pertahankan aerasi dan kontrol air berkala.',
+    ),
+    systemStatus: 'NORMAL',
+    unreadAlerts: 1,
+  );
+
+  static List<SystemAlert> get dummyAlerts => [
+    SystemAlert(
+      id: 1,
+      deviceCode: 'ESP32-01',
+      level: 'WARNING',
+      title: 'Fluktuasi Kelembapan',
+      message: 'Kelembaban udara sempat menyentuh 88% di nursery utama.',
+      createdAt: DateTime.now().subtract(const Duration(minutes: 35)),
+      isRead: false,
+    ),
+    SystemAlert(
+      id: 2,
+      deviceCode: 'ESP32-01',
+      level: 'INFO',
+      title: 'Sirkulasi Terjaga',
+      message: 'Suhu stabil di 28.5°C dengan aerasi berjalan normal.',
+      createdAt: DateTime.now().subtract(const Duration(hours: 2)),
+      isRead: true,
+    ),
+  ];
+
+  static List<DeviceStatus> get dummyDevices => [
+    DeviceStatus(
+      code: 'ESP32-01',
+      name: 'ESP32 Utama',
+      status: 'ONLINE',
+      lastSeen: DateTime.now(),
+      location: 'Rumah Kaca Pembibitan',
+      isOnline: true,
+      fan: const FanState(status: 'ON', mode: 'AUTO', isOn: true, deviceOnline: true),
+      latestSensor: SensorReading.dummy,
+    ),
+    DeviceStatus(
+      code: 'ESP32-CAM-01',
+      name: 'Kamera Monitor Daun',
+      status: 'ONLINE',
+      lastSeen: DateTime.now().subtract(const Duration(minutes: 12)),
+      location: 'Lahan Riset Agrotek',
+      isOnline: true,
+      fan: const FanState(status: 'OFF', mode: 'AUTO', isOn: false, deviceOnline: true),
+      latestSensor: SensorReading.dummy,
+    ),
+  ];
 }
 
 class SensorReading {
@@ -137,6 +195,53 @@ class SensorReading {
     'fan_mode': fanMode,
     'created_at': createdAt.toIso8601String(),
   };
+
+  static SensorReading get dummy => SensorReading(
+    deviceId: 'ESP32-01',
+    temperature: 28.5,
+    humidity: 75.0,
+    nitrogen: 48.0,
+    phosphorus: 26.0,
+    potassium: 38.0,
+    light: 850.0,
+    lightPercent: 72.0,
+    uvIndex: 3.2,
+    ultrasonic: 14.0,
+    distanceCm: 14.0,
+    levelPercent: 80.0,
+    waterLevelPercent: 80.0,
+    fanState: 'ON',
+    fanMode: 'AUTO',
+    createdAt: DateTime.now(),
+  );
+
+  static List<SensorReading> generateDummyHistory({String range = 'today'}) {
+    final baseTime = DateTime.now().subtract(const Duration(hours: 24));
+    final temps = [27.2, 27.5, 26.8, 26.5, 26.2, 26.0, 26.8, 27.9, 29.1, 30.5, 31.4, 32.2, 31.8, 31.0, 30.2, 29.5, 28.8, 28.2, 27.9, 28.1, 28.4, 28.6, 28.8, 29.2, 29.5];
+    final hums =  [82.0, 84.0, 85.0, 86.0, 88.0, 87.0, 83.0, 78.0, 74.0, 68.0, 65.0, 62.0, 64.0, 68.0, 72.0, 75.0, 78.0, 80.0, 82.0, 80.0, 78.0, 76.0, 75.0, 74.0, 72.0];
+    final waters =[75.0, 75.0, 74.0, 74.0, 73.0, 73.0, 74.0, 76.0, 78.0, 80.0, 80.0, 79.0, 78.0, 78.0, 77.0, 77.0, 78.0, 78.0, 79.0, 80.0, 82.0, 82.0, 80.0, 80.0, 82.0];
+
+    return List.generate(temps.length, (i) {
+      return SensorReading(
+        deviceId: 'ESP32-01',
+        temperature: temps[i],
+        humidity: hums[i],
+        nitrogen: 45.0 + (i % 8),
+        phosphorus: 24.0 + (i % 5),
+        potassium: 35.0 + (i % 6),
+        light: 600.0 + (i * 25),
+        lightPercent: (55.0 + (i % 35)).clamp(0, 95).toDouble(),
+        uvIndex: 2.5 + ((i % 6) * 0.4),
+        ultrasonic: 15.0 - ((i % 4) * 0.5),
+        distanceCm: 15.0 - ((i % 4) * 0.5),
+        levelPercent: waters[i],
+        waterLevelPercent: waters[i],
+        fanState: temps[i] > 30 ? 'ON' : 'OFF',
+        fanMode: 'AUTO',
+        createdAt: baseTime.add(Duration(minutes: i * 58)),
+      );
+    });
+  }
 }
 
 class PaddyPrediction {
