@@ -583,13 +583,11 @@ class _DashboardSection extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.child,
-    this.trailing,
   });
 
   final String title;
   final String subtitle;
   final Widget child;
-  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -638,7 +636,6 @@ class _DashboardSection extends StatelessWidget {
                   ],
                 ),
               ),
-              ?trailing,
             ],
           ),
           const SizedBox(height: 10),
